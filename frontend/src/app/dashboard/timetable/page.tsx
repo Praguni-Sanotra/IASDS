@@ -106,34 +106,62 @@ export default function TimetablePage() {
     }
   };
 
+  // Filter slots for the calendar
+  const filteredSlots = React.useMemo(() => {
+    if (!selectedId) return [];
+    
+    return slots.filter(slot => {
+      if (viewAs === 'batch') {
+        // Slot batch might be an ID or string
+        return slot.batch === selectedId || slot.batchId === selectedId;
+      }
+      if (viewAs === 'faculty') {
+        const fId = typeof slot.facultyId === 'string' ? slot.facultyId : slot.facultyId?._id;
+        return fId === selectedId;
+      }
+      if (viewAs === 'room') {
+        const rId = typeof slot.roomId === 'string' ? slot.roomId : slot.roomId?._id;
+        return rId === selectedId;
+      }
+      return true;
+    });
+  }, [slots, viewAs, selectedId]);
+
+  // Auto-select first option if none selected
+  useEffect(() => {
+    if (filterOptions.length > 0 && !selectedId) {
+      setSelectedId(filterOptions[0].id);
+    }
+  }, [filterOptions, selectedId]);
+
   return (
     <div className="relative min-h-screen flex flex-col gap-6 animate-in fade-in duration-700">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Timetable Explorer</h1>
-          <p className="text-sm text-zinc-500">View and manage academic schedules across departments.</p>
+          <h1 className="text-3xl font-black tracking-tight text-blue-900">Timetable Explorer</h1>
+          <p className="text-sm font-medium text-slate-500">View and manage academic schedules across departments.</p>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg">
+          <div className="hidden sm:flex items-center bg-blue-50 p-1 rounded-xl border border-blue-100">
             <button 
               onClick={() => handleExport('pdf')}
-              className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-md text-zinc-600 dark:text-zinc-400 transition-all"
+              className="p-2 hover:bg-white rounded-lg text-blue-600 transition-all"
               title="Export PDF"
             >
               <FileText size={18} />
             </button>
             <button 
               onClick={() => handleExport('excel')}
-              className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-md text-zinc-600 dark:text-zinc-400 transition-all"
+              className="p-2 hover:bg-white rounded-lg text-blue-600 transition-all"
               title="Export Excel"
             >
               <Share2 size={18} />
             </button>
             <button 
-              className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-md text-zinc-600 dark:text-zinc-400 transition-all"
+              className="p-2 hover:bg-white rounded-lg text-blue-600 transition-all"
               title="Print"
             >
               <Printer size={18} />
@@ -142,7 +170,7 @@ export default function TimetablePage() {
           
           <button 
             onClick={() => handleExport('ics')}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-bold rounded-lg hover:opacity-90 transition-all"
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-black rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all active:scale-95"
           >
             <CalendarIcon size={16} /> Add to Calendar
           </button>
@@ -167,12 +195,20 @@ export default function TimetablePage() {
             <p className="text-zinc-400 font-medium">Loading timetable data...</p>
           </div>
         ) : slots.length > 0 ? (
-          <TimetableCalendar 
-            slots={slots} 
-            isAdmin={isAdmin}
-            onSlotClick={setSelectedSlot}
-            onEventDrop={handleEventDrop}
-          />
+          <div className="flex flex-col gap-4">
+            {!selectedId && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl text-blue-600 dark:text-blue-400 text-sm font-medium flex items-center gap-2">
+                <CalendarIcon size={18} />
+                Please select a {viewAs} to view the schedule.
+              </div>
+            )}
+            <TimetableCalendar 
+              slots={filteredSlots} 
+              isAdmin={isAdmin}
+              onSlotClick={setSelectedSlot}
+              onEventDrop={handleEventDrop}
+            />
+          </div>
         ) : (
           <div className="w-full h-[600px] border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center text-center p-12">
             <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">

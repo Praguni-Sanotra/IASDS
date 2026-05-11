@@ -1,42 +1,84 @@
 import React from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, User, MapPin, Users } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface EventCardProps {
   event: any;
 }
 
-const typeColors: Record<string, string> = {
-  THEORY: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
-  LAB: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800',
-  SEMINAR: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800',
-  TUTORIAL: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
+const typeStyles: Record<string, { bg: string, text: string, border: string, iconColor: string }> = {
+  THEORY: {
+    bg: 'bg-blue-50/80 dark:bg-blue-900/20',
+    text: 'text-blue-700 dark:text-blue-300',
+    border: 'border-blue-200/50 dark:border-blue-800/50',
+    iconColor: 'text-blue-500'
+  },
+  LAB: {
+    bg: 'bg-purple-50/80 dark:bg-purple-900/20',
+    text: 'text-purple-700 dark:text-purple-300',
+    border: 'border-purple-200/50 dark:border-purple-800/50',
+    iconColor: 'text-purple-500'
+  },
+  SEMINAR: {
+    bg: 'bg-emerald-50/80 dark:bg-emerald-900/20',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    border: 'border-emerald-200/50 dark:border-emerald-800/50',
+    iconColor: 'text-emerald-500'
+  },
+  TUTORIAL: {
+    bg: 'bg-orange-50/80 dark:bg-orange-900/20',
+    text: 'text-orange-700 dark:text-orange-300',
+    border: 'border-orange-200/50 dark:border-orange-800/50',
+    iconColor: 'text-orange-500'
+  },
 };
 
 export function EventCard({ event }: EventCardProps) {
   const { extendedProps } = event;
-  const type = extendedProps.type || 'THEORY';
+  const type = (extendedProps.type || 'THEORY').toUpperCase();
   const isConflict = extendedProps.isConflict;
+  const style = typeStyles[type] || typeStyles.THEORY;
 
   return (
     <div className={cn(
-      "flex flex-col h-full w-full p-1.5 border rounded-md text-[10px] leading-tight overflow-hidden transition-all hover:shadow-md cursor-pointer",
-      isConflict ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800" : typeColors[type]
+      "group relative flex flex-col h-full w-full p-2 border-l-4 rounded-r-lg backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] hover:z-10 shadow-sm",
+      isConflict 
+        ? "bg-red-50/90 border-red-500 text-red-700 dark:bg-red-900/20 dark:text-red-300" 
+        : `${style.bg} ${style.border} ${style.text}`
     )}>
-      <div className="flex items-center justify-between gap-1 mb-1">
-        <span className="font-bold truncate">{extendedProps.subjectCode}</span>
-        {isConflict && <AlertCircle size={10} className="text-red-500 shrink-0" />}
-      </div>
-      
-      <div className="flex items-center gap-1 mb-1">
-        <div className="w-4 h-4 rounded-full bg-current opacity-20 flex items-center justify-center shrink-0">
-          <span className="text-[8px] font-bold text-current">{extendedProps.facultyInitials}</span>
-        </div>
-        <span className="truncate opacity-80">{extendedProps.roomNumber}</span>
+      {/* Subject Code & Title */}
+      <div className="flex items-start justify-between gap-1 mb-2">
+        <h4 className="font-black text-[11px] tracking-tight uppercase leading-none">
+          {extendedProps.subjectCode}
+        </h4>
+        {isConflict && <AlertCircle size={12} className="text-red-500 animate-pulse" />}
       </div>
 
-      <div className="mt-auto opacity-70 italic truncate">
-        {extendedProps.batchName} - {extendedProps.section}
+      <div className="space-y-1.5 flex-1">
+        {/* Faculty */}
+        <div className="flex items-center gap-1.5 opacity-90">
+          <User size={10} className={style.iconColor} />
+          <span className="text-[10px] font-medium truncate">
+            {extendedProps.facultyName || 'No Faculty'}
+          </span>
+        </div>
+
+        {/* Room */}
+        <div className="flex items-center gap-1.5 opacity-90">
+          <MapPin size={10} className={style.iconColor} />
+          <span className="text-[10px] font-medium truncate">
+            {extendedProps.roomName || extendedProps.roomId?.name || 'Room TBA'}
+          </span>
+        </div>
+      </div>
+
+      {/* Batch / Section footer */}
+      <div className="mt-2 pt-1 border-t border-current/10 flex items-center justify-between text-[9px] font-bold uppercase tracking-widest opacity-60">
+        <div className="flex items-center gap-1">
+          <Users size={8} />
+          <span>{extendedProps.batch || 'Gen'}</span>
+        </div>
+        <span>{extendedProps.section}</span>
       </div>
     </div>
   );

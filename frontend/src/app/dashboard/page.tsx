@@ -66,29 +66,29 @@ export default function DashboardPage() {
         <MetricCard 
           title="Subjects" 
           value={isLoading ? '...' : stats?.totalSubjects} 
-          icon={<BookOpen size={20} className="text-purple-600" />} 
+          icon={<BookOpen size={20} className="text-blue-600" />} 
           subtitle="Curriculum items"
         />
         <MetricCard 
           title="Rooms" 
           value={isLoading ? '...' : stats?.totalRooms} 
-          icon={<DoorOpen size={20} className="text-teal-600" />} 
+          icon={<DoorOpen size={20} className="text-blue-600" />} 
           subtitle="Available spaces"
         />
         <MetricCard 
           title="Conflicts" 
           value={isLoading ? '...' : stats?.activeTimetable?.conflictCount || 0} 
-          icon={<AlertCircle size={20} className={stats?.activeTimetable?.conflictCount > 0 ? "text-red-500" : "text-green-500"} />} 
+          icon={<AlertCircle size={20} className={stats?.activeTimetable?.conflictCount > 0 ? "text-red-500" : "text-emerald-500"} />} 
           subtitle="Current status"
         />
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
         {/* Latest Activity */}
-        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm lg:col-span-4">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <Clock size={18} className="text-zinc-400" /> System Status
+        <div className="rounded-3xl border border-blue-100 bg-white p-8 shadow-sm lg:col-span-4">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-black text-blue-900 flex items-center gap-3">
+              <Clock size={22} className="text-blue-600" /> System Status
             </h3>
           </div>
           <div className="space-y-4">
@@ -96,24 +96,24 @@ export default function DashboardPage() {
               label="Database" 
               status="Connected" 
               time="Real-time" 
-              icon={<ShieldCheck size={16} className="text-green-500" />} 
+              icon={<ShieldCheck size={18} className="text-emerald-500" />} 
             />
             <StatusItem 
               label="Last Schedule Generation" 
               status={stats?.lastGeneratedAt ? new Date(stats.lastGeneratedAt).toLocaleDateString() : 'N/A'} 
               time={stats?.lastGeneratedAt ? new Date(stats.lastGeneratedAt).toLocaleTimeString() : ''}
-              icon={<Calendar size={16} className="text-blue-500" />} 
+              icon={<Calendar size={18} className="text-blue-500" />} 
             />
-            <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 text-sm text-zinc-500 italic">
+            <div className="p-5 rounded-2xl bg-blue-50/50 text-sm text-blue-800 font-medium italic border border-blue-100">
               "The AI scheduler is ready to generate new patterns based on current constraints."
             </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm lg:col-span-3">
-          <h3 className="font-bold text-zinc-900 dark:text-zinc-100 mb-6">Quick Actions</h3>
-          <div className="grid grid-cols-1 gap-3">
+        <div className="rounded-3xl border border-blue-100 bg-white p-8 shadow-sm lg:col-span-3">
+          <h3 className="text-xl font-black text-blue-900 mb-8">Quick Actions</h3>
+          <div className="grid grid-cols-1 gap-4">
             <QuickActionLink href="/dashboard/timetable" label="Manage Schedule" />
             <QuickActionLink href="/dashboard/analytics" label="System Analytics" />
             {user.role === 'ADMIN' && (
@@ -131,29 +131,31 @@ export default function DashboardPage() {
 
 function MetricCard({ title, value, icon, subtitle }: any) {
   return (
-    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-2">
-        <div className="p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+    <div className="rounded-3xl border border-blue-100 bg-white p-7 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+      <div className="flex items-center justify-between mb-4">
+        <div className="p-3 bg-blue-50 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
           {icon}
         </div>
       </div>
-      <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{value}</div>
-      <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mt-1">{title}</div>
-      <p className="text-xs text-zinc-500 mt-0.5">{subtitle}</p>
+      <div className="text-4xl font-black text-slate-900 tracking-tighter">{value}</div>
+      <div className="text-sm font-bold text-blue-900 mt-2">{title}</div>
+      <p className="text-xs text-slate-400 mt-1 font-medium">{subtitle}</p>
     </div>
   );
 }
 
 function StatusItem({ label, status, time, icon }: any) {
   return (
-    <div className="flex items-center justify-between p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
-      <div className="flex items-center gap-3">
-        {icon}
-        <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{label}</span>
+    <div className="flex items-center justify-between p-4 rounded-2xl border border-blue-50 bg-white hover:border-blue-200 transition-colors">
+      <div className="flex items-center gap-4">
+        <div className="p-2 bg-blue-50/50 rounded-xl">
+          {icon}
+        </div>
+        <span className="text-sm font-bold text-slate-700">{label}</span>
       </div>
       <div className="text-right">
-        <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{status}</div>
-        {time && <div className="text-[10px] text-zinc-400">{time}</div>}
+        <div className="text-sm font-black text-blue-900">{status}</div>
+        {time && <div className="text-[10px] text-slate-400 font-bold uppercase">{time}</div>}
       </div>
     </div>
   );
@@ -163,10 +165,10 @@ function QuickActionLink({ href, label }: any) {
   return (
     <Link 
       href={href}
-      className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-zinc-700 dark:text-zinc-300 transition-colors group"
+      className="flex items-center justify-between p-4 rounded-2xl bg-blue-50/50 hover:bg-blue-600 text-blue-900 hover:text-white transition-all duration-300 group shadow-sm"
     >
-      <span className="text-sm font-medium">{label}</span>
-      <ArrowRight size={16} className="text-zinc-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+      <span className="text-sm font-black tracking-tight">{label}</span>
+      <ArrowRight size={18} className="text-blue-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
     </Link>
   );
 }

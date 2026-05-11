@@ -42,10 +42,26 @@ def generate_schedule(self, semester_id: str, config: dict):
                 'availability': avail
             })
             
+        target_dept = config.get('department')
+        target_sem = int(semester_id) if semester_id.isdigit() else None
+
         subjects = []
         for s in data['subjects']:
+            # Filter by department and semester if provided
+            if target_dept and str(s.get('department')) != target_dept:
+                continue
+            if target_sem and s.get('semester') != target_sem:
+                continue
+
             # Map 'teachers' field if it exists, otherwise 'eligibleFaculty'
             eligible = s.get('teachers', []) or s.get('eligibleFaculty', [])
+            
+            # FALLBACK: If no faculty assigned, allow all faculties to be eligible
+            # so the solver doesn't crash (helps with testing/missing data)
+            if not eligible:
+                print(f"WARNING: Subject {s.get('code')} has no faculty assigned. Using all faculties as fallback.")
+                eligible = [f['id'] for f in faculties]
+
             subjects.append({
                 'id': str(s['_id']),
                 'code': s['code'],
@@ -66,6 +82,22 @@ def generate_schedule(self, semester_id: str, config: dict):
             
         # Create implicit batches based on (department, semester)
         batches = []
+        batch_hours = {}
+        for s in subjects:
+            key = f"batch_{s['department']}_{s['semester']}"
+            batch_hours[key] = batch_hours.get(key, 0) + s['hoursPerWeek']
+            
+        # Capacity check: Max slots per week = 6 days * 6 periods = 36
+        MAX_SLOTS = 36
+        for key, total_hrs in batch_hours.items():
+            if total_hrs > MAX_SLOTS:
+                print(f"WARNING: Batch {key} is over-capacity ({total_hrs}/{MAX_SLOTS} hrs). Scaling down subject hours.")
+                # Simple scaling to fit
+                scale_factor = MAX_SLOTS / total_hrs
+                for s in subjects:
+                    if f"batch_{s['department']}_{s['semester']}" == key:
+                        s['hoursPerWeek'] = max(1, int(s['hoursPerWeek'] * scale_factor))
+
         batch_groups = {}
         for s in subjects:
             key = (s['department'], s['semester'])
@@ -73,7 +105,7 @@ def generate_schedule(self, semester_id: str, config: dict):
                 batch_groups[key] = True
                 batches.append({
                     'id': f"batch_{s['department']}_{s['semester']}",
-                    'name': f"Dept {s['department']} Sem {s['semester']}",
+                    'name': f"{s['department']} - Sem {s['semester']}",
                     'semester': s['semester'],
                     'section': 'A',
                     'strength': 50
@@ -105,19 +137,33 @@ def generate_schedule(self, semester_id: str, config: dict):
         formatted_slots = []
         day_reverse_map = {0: 'MON', 1: 'TUE', 2: 'WED', 3: 'THU', 4: 'FRI', 5: 'SAT'}
         
+        # Period Timing Mapping (Solver uses 0-5 index)
+        def get_period_times(p_idx):
+            p_num = p_idx + 1 # Convert 0-indexed to 1-indexed
+            timings = {
+                1: ("09:35", "10:35"),
+                2: ("10:35", "11:35"),
+                3: ("11:35", "12:35"),
+                4: ("12:35", "13:35"),
+                5: ("14:35", "15:35"),
+                6: ("15:35", "16:35"),
+            }
+            return timings.get(p_num, (f"{8+p_num}:00", f"{9+p_num}:00"))
+
         from bson import ObjectId
         for assignment in solver_result['assignments']:
+            start_t, end_t = get_period_times(assignment['period'])
             formatted_slots.append({
                 "day": day_reverse_map[assignment['day']],
                 "period": assignment['period'],
-                "startTime": f"{8 + assignment['period']}:00",
-                "endTime": f"{9 + assignment['period']}:00",
+                "startTime": start_t,
+                "endTime": end_t,
                 "subjectId": ObjectId(assignment['subjectId']),
                 "facultyId": ObjectId(assignment['facultyId']),
                 "roomId": ObjectId(assignment['roomId']),
                 "batch": assignment['batchId'],
                 "section": assignment['section'],
-                "isLab": False # Can be derived from subject type
+                "isLab": False
             })
         
         timetable_doc = {

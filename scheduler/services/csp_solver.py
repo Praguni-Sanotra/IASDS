@@ -26,7 +26,7 @@ def solve(faculties, subjects, rooms, batches, constraints, timeout_seconds=60):
     batch_dict = {b['id']: b for b in batches}
     
     DAYS = 6  # Mon(0) to Sat(5)
-    PERIODS = 8 # 0 to 7
+    PERIODS = 6 # 0 to 5 (matched to institute timings)
     
     # Pre-process faculty availability
     # faculty_avail[f_id][day] = set of available periods

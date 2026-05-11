@@ -83,15 +83,15 @@ export default function SubjectsPage() {
   };
 
   const columns = [
-    { key: 'code', header: 'Code', render: (row: any) => <div className="font-bold text-zinc-900 dark:text-zinc-100">{row.code}</div> },
-    { key: 'name', header: 'Name', render: (row: any) => <div className="font-medium text-zinc-700 dark:text-zinc-300">{row.name}</div> },
+    { key: 'code', header: 'Code', render: (row: any) => <div className="font-black text-blue-900 tracking-tight">{row.code}</div> },
+    { key: 'name', header: 'Name', render: (row: any) => <div className="font-bold text-slate-700">{row.name}</div> },
     { key: 'type', header: 'Type', render: (row: any) => (
-      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100">
         {row.type}
       </span>
     )},
-    { key: 'credits', header: 'Credits/Hrs', render: (row: any) => `${row.credits} Cr / ${row.hoursPerWeek} Hrs` },
-    { key: 'department', header: 'Dept/Sem', render: (row: any) => `${row.department} - Sem ${row.semester}` },
+    { key: 'credits', header: 'Credits/Hrs', render: (row: any) => <span className="font-medium text-slate-500">{row.credits} Cr / {row.hoursPerWeek} Hrs</span> },
+    { key: 'department', header: 'Dept/Sem', render: (row: any) => <span className="font-medium text-slate-500">{row.department} - Sem {row.semester}</span> },
   ];
 
   return (
@@ -99,31 +99,31 @@ export default function SubjectsPage() {
       
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Subject Management</h1>
-          <p className="text-sm text-zinc-500">Manage academic subjects, credits, and requirements.</p>
+          <h1 className="text-3xl font-black tracking-tighter text-blue-900">Subject Management</h1>
+          <p className="text-sm font-medium text-slate-500">Manage academic subjects, credits, and requirements.</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsUploadOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-zinc-700 bg-white border border-zinc-200 hover:bg-zinc-50 dark:text-zinc-300 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-blue-700 bg-white border border-blue-100 hover:bg-blue-50 transition-all shadow-sm active:scale-95"
           >
             <UploadCloud size={16} /> Import CSV
           </button>
-          <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm">
+          <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95">
             <Plus size={16} /> Add Subject
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-blue-50">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400" size={18} />
           <input 
             type="text" 
             placeholder="Search by code or name..." 
             value={search}
             onChange={handleSearchChange}
-            className="w-full pl-10 pr-4 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent focus:ring-2 focus:ring-blue-600 focus:outline-none dark:text-white"
+            className="w-full pl-11 pr-4 py-3 text-sm rounded-xl border border-blue-100 bg-blue-50/30 focus:ring-2 focus:ring-blue-600 focus:outline-none focus:bg-white transition-all text-blue-900 font-medium"
           />
         </div>
       </div>

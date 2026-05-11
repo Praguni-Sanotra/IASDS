@@ -28,7 +28,13 @@ export function GenerationPanel({ onScheduleReady }: GenerationPanelProps) {
   const [stage, setStage] = useState('');
   const [jobId, setJobId] = useState<string | null>(null);
   
-  // Config
+  // Context
+  const [context, setContext] = useState({
+    department: '',
+    semester: '',
+    academicYear: '2024-25'
+  });
+
   const [config, setConfig] = useState({
     populationSize: 50,
     generations: 100
@@ -73,14 +79,20 @@ export function GenerationPanel({ onScheduleReady }: GenerationPanelProps) {
   }, [accessToken, jobId, onScheduleReady]);
 
   const handleGenerate = async () => {
+    if (!context.department || !context.semester) {
+      toast.error('Please select Department and Semester');
+      return;
+    }
+
     setIsGenerating(true);
     setProgress(0);
     setStage('QUEUING...');
     
     try {
       const res = await apiClient.post('/schedule/generate', {
-        semesterId: 'current',
-        academicYear: '2024-25',
+        semesterId: context.semester,
+        academicYear: context.academicYear,
+        department: context.department,
         config
       });
       setJobId(res.data.jobId);
@@ -156,6 +168,54 @@ export function GenerationPanel({ onScheduleReady }: GenerationPanelProps) {
             </div>
           ) : (
             <>
+              {/* Generation Context */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-semibold mb-2">
+                  <History size={16} /> Schedule Context
+                </div>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] text-zinc-500 font-bold uppercase block mb-1">Department</label>
+                    <select 
+                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 text-xs"
+                      value={context.department}
+                      onChange={(e) => setContext({...context, department: e.target.value})}
+                    >
+                      <option value="">Select Department</option>
+                      <option value="CSE">Computer Science</option>
+                      <option value="ECE">Electronics</option>
+                      <option value="MECH">Mechanical</option>
+                      <option value="CIVIL">Civil</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-zinc-500 font-bold uppercase block mb-1">Semester</label>
+                      <select 
+                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 text-xs"
+                        value={context.semester}
+                        onChange={(e) => setContext({...context, semester: e.target.value})}
+                      >
+                        <option value="">Select</option>
+                        {[1,2,3,4,5,6,7,8].map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-500 font-bold uppercase block mb-1">Year</label>
+                      <input 
+                        type="text"
+                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 text-xs"
+                        value={context.academicYear}
+                        onChange={(e) => setContext({...context, academicYear: e.target.value})}
+                        placeholder="2024-25"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-semibold mb-2">
                   <Settings2 size={16} /> Hyperparameters
