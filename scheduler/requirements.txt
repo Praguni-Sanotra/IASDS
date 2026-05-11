@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+celery
+redis
+pymongo
+pydantic
+python-dotenv
+ortools
+deap
+numpy
+pandas
+httpx
+langchain
+langchain-openai
