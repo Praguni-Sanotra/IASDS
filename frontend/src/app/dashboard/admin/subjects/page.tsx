@@ -84,47 +84,45 @@ export default function SubjectsPage() {
   };
 
   const columns = [
-    { key: 'code', header: 'Code', render: (row: any) => <div className="font-extrabold text-blue-900 tracking-tight">{row.code}</div> },
-    { key: 'name', header: 'Name', render: (row: any) => <div className="font-bold text-slate-800">{row.name}</div> },
+    { key: 'code', header: 'Code', render: (row: any) => <div className="font-black text-blue-900 tracking-tight">{row.code}</div> },
+    { key: 'name', header: 'Name', render: (row: any) => <div className="font-bold text-slate-700">{row.name}</div> },
     { key: 'type', header: 'Type', render: (row: any) => (
-      <span className="inline-flex items-center px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-100">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100">
         {row.type}
       </span>
     )},
-    { key: 'credits', header: 'Credits/Hrs', render: (row: any) => <span className="font-bold text-slate-500">{row.credits} Cr / {row.hoursPerWeek} Hrs</span> },
-    { key: 'department', header: 'Dept/Sem', render: (row: any) => <span className="font-bold text-slate-500">{row.department} - Sem {row.semester}</span> },
+    { key: 'credits', header: 'Credits/Hrs', render: (row: any) => <span className="font-medium text-slate-500">{row.credits} Cr / {row.hoursPerWeek} Hrs</span> },
+    { key: 'department', header: 'Dept/Sem', render: (row: any) => <span className="font-medium text-slate-500">{row.department} - Sem {row.semester}</span> },
   ];
 
-
-
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-blue-950">Subject Catalogue</h1>
-          <p className="text-sm font-medium text-slate-500">Academic curriculum subjects, credits, and departmental assignments.</p>
+          <h1 className="text-3xl font-black tracking-tighter text-blue-900">Subject Management</h1>
+          <p className="text-sm font-medium text-slate-500">Manage academic subjects, credits, and requirements.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsMappingUploadOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold text-blue-600 bg-white border-2 border-blue-100 hover:bg-blue-50 transition-all shadow-sm active:scale-95"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all shadow-sm active:scale-95"
           >
-            <UploadCloud size={18} /> Import Mappings
+            <UploadCloud size={16} /> Import Mappings
           </button>
           <button 
             onClick={() => setIsUploadOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold text-blue-600 bg-white border-2 border-blue-100 hover:bg-blue-50 transition-all shadow-sm active:scale-95"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-blue-700 bg-white border border-blue-100 hover:bg-blue-50 transition-all shadow-sm active:scale-95"
           >
-            <UploadCloud size={18} /> Import
+            <UploadCloud size={16} /> Import Excel/CSV
           </button>
-          <button className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all active:scale-95">
-            <Plus size={18} /> Add Subject
+          <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95">
+            <Plus size={16} /> Add Subject
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-5 rounded-[24px] shadow-sm border border-blue-50">
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-blue-50">
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400" size={18} />
           <input 
@@ -132,7 +130,7 @@ export default function SubjectsPage() {
             placeholder="Search by code or name..." 
             value={search}
             onChange={handleSearchChange}
-            className="w-full pl-12 pr-4 h-12 text-sm font-bold rounded-2xl border-2 border-slate-50 bg-slate-50/50 focus:border-blue-200 focus:bg-white focus:ring-4 focus:ring-blue-50 focus:outline-none transition-all placeholder:text-slate-400"
+            className="w-full pl-11 pr-4 py-3 text-sm rounded-xl border border-blue-100 bg-blue-50/30 focus:ring-2 focus:ring-blue-600 focus:outline-none focus:bg-white transition-all text-blue-900 font-medium"
           />
         </div>
       </div>

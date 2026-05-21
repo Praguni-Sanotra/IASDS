@@ -58,48 +58,26 @@ export default function LoginPage() {
     }
   };
 
-  const handlePortalSwitch = (portal: string) => {
-    if (portal === 'hod') {
-      router.push('/hod-login');
-    } else {
-      router.push('/login');
-    }
-  };
-
   return (
-    <div className="w-full max-w-md bg-white shadow-2xl rounded-3xl p-10 border border-blue-50 transition-all duration-500 hover:shadow-blue-500/10">
-      
-      {/* Portal Dropdown Switcher */}
-      <div className="mb-8">
-        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Select Portal</label>
-        <select 
-          onChange={(e) => handlePortalSwitch(e.target.value)}
-          value="incharge"
-          className="w-full h-11 rounded-xl border-2 border-blue-50 bg-blue-50/50 px-4 text-xs font-black text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%232563eb%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E')] bg-[length:16px_16px] bg-[right_1rem_center] bg-no-repeat"
-        >
-          <option value="incharge">Timetable In-charge</option>
-          <option value="hod">HOD Department</option>
-        </select>
-      </div>
-
-      <div className="flex flex-col items-center mb-10">
-        <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-blue-600/30">
-          <span className="text-white text-4xl font-black italic">M</span>
+    <div className="w-full max-w-md bg-white dark:bg-zinc-900 shadow-xl rounded-2xl p-8 border border-zinc-200 dark:border-zinc-800 transition-all duration-300">
+      <div className="flex flex-col items-center mb-8">
+        <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-blue-600/20">
+          <span className="text-white text-3xl font-bold">M</span>
         </div>
-        <h1 className="text-3xl font-black tracking-tight text-blue-950">
-          {isLogin ? 'Timetable In-charge' : 'Create In-charge Account'}
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          {isLogin ? 'Welcome back' : 'Create an account'}
         </h1>
-        <p className="text-sm font-bold text-slate-500 mt-3 text-center max-w-[300px]">
+        <p className="text-sm text-zinc-500 mt-2 text-center">
           {isLogin 
             ? 'Intelligent Academic Scheduling & Decision-Support System'
             : 'Join the MIET intelligent scheduling platform'}
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!isLogin && (
-          <div className="space-y-1.5">
-            <label className="text-xs font-black uppercase tracking-wider text-blue-900 ml-1">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Full Name
             </label>
             <input
@@ -107,18 +85,18 @@ export default function LoginPage() {
               type="text"
               placeholder="John Doe"
               className={cn(
-                "flex h-12 w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-2 text-sm text-black placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white focus:border-blue-600 disabled:cursor-not-allowed disabled:opacity-50 transition-all",
-                errors.name && "border-red-500 focus:ring-red-500"
+                "flex h-10 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50 transition-colors",
+                errors.name && "border-red-500 focus:ring-red-500 dark:border-red-500"
               )}
             />
             {errors.name && (
-              <p className="text-xs font-bold text-red-500 ml-1">{errors.name.message}</p>
+              <p className="text-sm text-red-500">{errors.name.message}</p>
             )}
           </div>
         )}
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-black uppercase tracking-wider text-blue-900 ml-1">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Email Address
           </label>
           <input
@@ -126,17 +104,17 @@ export default function LoginPage() {
             type="email"
             placeholder="admin@miet.ac.in"
             className={cn(
-              "flex h-12 w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-2 text-sm text-black placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white focus:border-blue-600 disabled:cursor-not-allowed disabled:opacity-50 transition-all",
-              errors.email && "border-red-500 focus:ring-red-500"
+              "flex h-10 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50 transition-colors",
+              errors.email && "border-red-500 focus:ring-red-500 dark:border-red-500"
             )}
           />
           {errors.email && (
-            <p className="text-xs font-bold text-red-500 ml-1">{errors.email.message}</p>
+            <p className="text-sm text-red-500">{errors.email.message}</p>
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-black uppercase tracking-wider text-blue-900 ml-1">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Password
           </label>
           <div className="relative">
@@ -145,31 +123,31 @@ export default function LoginPage() {
               type={showPassword ? 'text' : 'password'}
               placeholder="••••••••"
               className={cn(
-                "flex h-12 w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-2 text-sm text-black placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white focus:border-blue-600 disabled:cursor-not-allowed disabled:opacity-50 pr-12 transition-all",
-                errors.password && "border-red-500 focus:ring-red-500"
+                "flex h-10 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50 pr-10 transition-colors",
+                errors.password && "border-red-500 focus:ring-red-500 dark:border-red-500"
               )}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-3.5 text-slate-400 hover:text-blue-600 transition-colors"
+              className="absolute right-3 top-2.5 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
           {errors.password && (
-            <p className="text-xs font-bold text-red-500 ml-1">{errors.password.message}</p>
+            <p className="text-sm text-red-500">{errors.password.message}</p>
           )}
         </div>
 
         {!isLogin && (
-          <div className="space-y-1.5">
-            <label className="text-xs font-black uppercase tracking-wider text-blue-900 ml-1">
-              Account Role
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Role
             </label>
             <select
               {...register('role')}
-              className="flex h-12 w-full rounded-xl border-2 border-slate-100 bg-white px-4 py-2 text-sm font-bold text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all cursor-pointer"
+              className="flex h-10 w-full rounded-md border border-zinc-300 bg-white dark:bg-zinc-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 dark:border-zinc-700 dark:text-zinc-50 transition-colors"
             >
               <option value="FACULTY">Faculty</option>
               <option value="STUDENT">Student</option>
@@ -181,23 +159,23 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-black ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-blue-600 text-white hover:bg-blue-700 h-12 px-4 py-2 w-full mt-4 shadow-xl shadow-blue-600/20 active:scale-[0.98]"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2 w-full mt-6 shadow-md shadow-blue-600/10"
         >
           {isSubmitting ? (
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : null}
-          {isLogin ? 'Sign In to Portal' : 'Create System Account'}
+          {isLogin ? 'Sign In' : 'Create Account'}
         </button>
       </form>
 
-      <div className="mt-8 text-center space-y-4">
+      <div className="mt-6 text-center">
         <button
           onClick={toggleAuthMode}
-          className="text-xs font-black text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-widest"
+          className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
         >
           {isLogin 
-            ? "Need an account? Register" 
-            : "Already registered? Login"}
+            ? "Don't have an account? Sign Up" 
+            : "Already have an account? Sign In"}
         </button>
       </div>
     </div>

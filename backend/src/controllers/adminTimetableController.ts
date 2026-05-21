@@ -70,7 +70,7 @@ export const generateAITimetable = async (req: AuthRequest, res: Response) => {
       }
     );
 
-    const { timetableId, stats, message } = schedulerRes.data as any;
+    const { timetableId, stats, message } = schedulerRes.data;
 
     // ── 3. AUDIT LOG (non-critical — don't fail generation if this fails) ────
     try {
@@ -466,46 +466,3 @@ const checkSlotConflicts = async (
     messages: conflicts
   };
 };
-
-export const sendTimetableToHOD = async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
-
-  if (!mongoose.Types.ObjectId.isValid(id as string)) {
-    return res.status(400).json({ message: 'Invalid timetable ID.' });
-  }
-
-  try {
-    const timetable = await Timetable.findById(id as any);
-    if (!timetable) {
-      return res.status(404).json({ message: 'Timetable not found.' });
-    }
-
-    // Update status to pending HOD approval
-    timetable.status = 'PENDING_HOD_APPROVAL';
-    await timetable.save();
-
-    await AuditLog.create({
-      action: 'SEND_TO_HOD',
-      entity: 'TIMETABLE',
-      entityId: id as any,
-      performedBy: req.user?.id,
-      ipAddress: req.ip,
-      details: { 
-        semesterId: timetable.semesterId, 
-        academicYear: timetable.academicYear,
-        status: timetable.status 
-      },
-    });
-
-    logger.info(`[AdminTimetable] Timetable ${id} sent to HOD by ${req.user?.id}`);
-
-    return res.json({ 
-      message: 'Timetable submitted to HOD successfully.',
-      status: timetable.status 
-    });
-  } catch (error) {
-    logger.error('[AdminTimetable] Send to HOD error:', error);
-    return res.status(500).json({ message: 'Error submitting timetable to HOD.' });
-  }
-};
-

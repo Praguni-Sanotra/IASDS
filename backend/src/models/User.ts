@@ -4,7 +4,6 @@ export enum UserRole {
   ADMIN = 'ADMIN',
   FACULTY = 'FACULTY',
   STUDENT = 'STUDENT',
-  HOD = 'HOD',
 }
 
 export interface IUser extends Document {

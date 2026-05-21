@@ -3,13 +3,9 @@ import { DayOfWeek } from './Faculty';
 
 export enum TimetableStatus {
   DRAFT = 'DRAFT',
-  PENDING_HOD_APPROVAL = 'PENDING_HOD_APPROVAL',
-  APPROVED_BY_HOD = 'APPROVED_BY_HOD',
-  REJECTED_BY_HOD = 'REJECTED_BY_HOD',
   PUBLISHED = 'PUBLISHED',
   ARCHIVED = 'ARCHIVED',
 }
-
 
 export interface ITimetableSlot {
   day: DayOfWeek;
