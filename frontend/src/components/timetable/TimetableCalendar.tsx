@@ -41,71 +41,55 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
     return localDate.toISOString().split('T')[0];
   };
 
-  // Transform internal slots to FullCalendar events
-  const events = slots.map((slot, index) => {
-    const dayMap: Record<string, number> = {
-      'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5
-    };
-    
-    // Map to the current week's dates so they show up on the default calendar view
-    const date = getDateForDay(slot.day);
+  // Transform internal slots to FullCalendar events - Memoized for performance
+  const events = React.useMemo(() => {
+    return slots.map((slot, index) => {
+      // Map to the current week's dates so they show up on the default calendar view
+      const date = getDateForDay(slot.day);
 
-    // Static Grid Mapping:
-    // Period 1 -> 09:00
-    // Period 2 -> 10:00
-    // Period 3 -> 11:00
-    // Period 4 -> 12:00
-    // Period 5 -> 14:00 (Skip 13:00 for Break)
-    // Period 6 -> 15:00
-    
-    // Period 1 -> 09:00:00
-    // Period 2 -> 10:00:00
-    // Period 3 -> 11:00:00
-    // Period 4 -> 12:00:00
-    // Period 5 -> 14:00:00 (Skip 13:00 for Break)
-    // Period 6 -> 15:00:00
-    
-    const pNum = Number(slot.period);
-    // Python backend stores periods as 0-5. Map them to 1-6 for the times dict.
-    const normalizedPeriod = pNum < 6 ? pNum + 1 : pNum;
-    
-    const times: Record<number, {s: string, e: string}> = {
-      1: { s: "09:00:00", e: "10:00:00" },
-      2: { s: "10:00:00", e: "11:00:00" },
-      3: { s: "11:00:00", e: "12:00:00" },
-      4: { s: "12:00:00", e: "13:00:00" },
-      5: { s: "14:00:00", e: "15:00:00" },
-      6: { s: "15:00:00", e: "16:00:00" },
-    };
+      const pNum = Number(slot.period);
+      // Python backend stores periods as 0-5. Map them to 1-6 for the times dict.
+      const normalizedPeriod = pNum < 6 ? pNum + 1 : pNum;
+      
+      const times: Record<number, {s: string, e: string}> = {
+        1: { s: "09:00:00", e: "10:00:00" },
+        2: { s: "10:00:00", e: "11:00:00" },
+        3: { s: "11:00:00", e: "12:00:00" },
+        4: { s: "12:00:00", e: "13:00:00" },
+        5: { s: "14:00:00", e: "15:00:00" },
+        6: { s: "15:00:00", e: "16:00:00" },
+      };
 
-    const { s: startTime, e: endTime } = times[normalizedPeriod] || times[1];
+      const { s: startTime, e: endTime } = times[normalizedPeriod] || times[1];
 
-    const subjectCode = slot.subjectId?.code || slot.subjectCode || 'SUB';
-    const facultyName = slot.facultyId?.name || slot.facultyName || 'Faculty';
+      const subjectCode = slot.subjectId?.code || slot.subjectCode || 'SUB';
+      const facultyName = slot.facultyId?.name || slot.facultyName || 'Faculty';
 
-    const slotId = slot._id?.toString?.() || slot._id || `slot-${index}`;
+      const slotId = slot._id?.toString?.() || slot._id || `slot-${index}`;
 
-    return {
-      id: slotId,
-      title: subjectCode,
-      start: `${date}T${startTime}`,
-      end: `${date}T${endTime}`,
-      allDay: false,
-      extendedProps: {
-        ...slot,
-        _id: slotId,
-        subjectCode,
-        facultyName,
-        facultyInitials: facultyName.split(' ').map((n: string) => n[0]).join('') || '??',
-      },
-      editable: isAdmin,
-    };
-  });
+      return {
+        id: slotId,
+        title: subjectCode,
+        start: `${date}T${startTime}`,
+        end: `${date}T${endTime}`,
+        allDay: false,
+        extendedProps: {
+          ...slot,
+          _id: slotId,
+          subjectCode,
+          facultyName,
+          facultyInitials: facultyName.split(' ').map((n: string) => n[0]).join('') || '??',
+        },
+        editable: isAdmin,
+      };
+    });
+  }, [slots, isAdmin]);
+
 
   return (
     <div className="flex-1 bg-white rounded-xl border border-blue-100 shadow-sm overflow-hidden flex flex-col">
       <FullCalendar
-        plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+        plugins={[timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
         headerToolbar={false}
         dayHeaderFormat={{ weekday: 'short' }}
@@ -124,9 +108,12 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
             startTime: '13:00:00',
             endTime: '14:00:00',
             display: 'background',
-            color: '#eff6ff' // Light blue break
+            color: '#f0f7ff' // Light blue break
           }
         ]}
+        // Configuration to show empty slots properly
+        slotEventOverlap={false}
+        eventMinHeight={60}
         editable={isAdmin}
         eventClick={(info) => onSlotClick(info.event.extendedProps)}
         eventDrop={onEventDrop}
@@ -137,34 +124,35 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
         eventOverlap={false}
         height="auto"
         nowIndicator={false}
-        expandRows={false}
+        expandRows={true}
         handleWindowResize={true}
         themeSystem="standard"
         slotLabelContent={(arg) => {
           const hour = arg.date.getHours();
           const periodMap: Record<number, string> = {
-            9: '1st Period (9:35)',
-            10: '2nd Period (10:35)',
-            11: '3rd Period (11:35)',
-            12: '4th Period (12:35)',
-            13: 'BREAK (1:35)',
-            14: '5th Period (2:35)',
-            15: '6th Period (3:35)',
-            16: 'Ending (4:35)'
+            9: 'Period 1 (09:00)',
+            10: 'Period 2 (10:00)',
+            11: 'Period 3 (11:00)',
+            12: 'Period 4 (12:00)',
+            13: 'RECESS (1:00)',
+            14: 'Period 5 (02:00)',
+            15: 'Period 6 (03:00)',
+            16: 'End (04:00)'
           };
           
           return (
-            <div className="flex flex-col items-center py-1">
-              <span className="text-[9px] font-black text-blue-600 uppercase leading-none mb-1">
+            <div className="flex flex-col items-center py-2">
+              <span className="text-[10px] font-black text-blue-700 uppercase leading-none mb-1">
                 {periodMap[hour] || ''}
               </span>
-              <span className="text-[10px] text-slate-400 font-medium">
+              <span className="text-[11px] text-blue-400 font-bold opacity-60">
                 {arg.text}
               </span>
             </div>
           );
         }}
       />
+
 
       <style jsx global>{`
         .fc {

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
+import dynamic from 'next/dynamic';
 import { useAuthStore } from '../../store/authStore';
 import apiClient from '../../lib/apiClient';
 import {
@@ -9,7 +10,13 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import GenerateAITimetableModal from '../../components/modals/GenerateAITimetableModal';
+
+// Lazy load heavy modal components
+const GenerateAITimetableModal = dynamic(() => import('../../components/modals/GenerateAITimetableModal'), {
+  loading: () => <div className="hidden" />,
+  ssr: false
+});
+
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -17,6 +24,12 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAIModal, setShowAIModal] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'HOD') {
+      router.push('/dashboard/hod');
+    }
+  }, [user, router]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -32,12 +45,11 @@ export default function DashboardPage() {
     fetchStats();
   }, []);
 
-  // After successful generation: navigate to timetable page
   const handleGenerationSuccess = () => {
     router.push('/dashboard/timetable');
   };
 
-  if (!user) return null;
+  if (!user || user.role === 'HOD') return null;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -104,21 +116,26 @@ export default function DashboardPage() {
           icon={
             <AlertCircle
               size={20}
-              className={stats?.activeTimetable?.conflictCount > 0 ? "text-red-500" : "text-emerald-500"}
+              className="text-blue-400"
             />
           }
-          subtitle="Current status"
+          subtitle="Current timetable status"
         />
+
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
         {/* ── System Status ────────────────────────────────────────────── */}
-        <div className="rounded-3xl border border-blue-100 bg-white p-8 shadow-sm lg:col-span-4">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-black text-blue-900 flex items-center gap-3">
-              <Clock size={22} className="text-blue-600" /> System Status
+        <div className="rounded-[32px] border border-blue-50 bg-white p-10 shadow-sm lg:col-span-4 hover:shadow-xl transition-all duration-500">
+          <div className="flex items-center justify-between mb-10">
+            <h3 className="text-2xl font-black text-blue-900 flex items-center gap-4">
+              <div className="p-2 bg-blue-100 rounded-xl text-blue-600">
+                <Clock size={24} />
+              </div> 
+              Infrastructure Status
             </h3>
           </div>
+
           <div className="space-y-4">
             <StatusItem
               label="Database"
@@ -139,8 +156,8 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Quick Actions ─────────────────────────────────────────────── */}
-        <div className="rounded-3xl border border-blue-100 bg-white p-8 shadow-sm lg:col-span-3">
-          <h3 className="text-xl font-black text-blue-900 mb-8">Quick Actions</h3>
+        <div className="rounded-[32px] border border-blue-50 bg-white p-10 shadow-sm lg:col-span-3 hover:shadow-xl transition-all duration-500">
+          <h3 className="text-2xl font-black text-blue-900 mb-10">Quick Actions</h3>
           <div className="grid grid-cols-1 gap-4">
             <QuickActionLink href="/dashboard/timetable" label="Manage Schedule" />
             <QuickActionLink href="/dashboard/analytics" label="System Analytics" />
@@ -150,10 +167,10 @@ export default function DashboardPage() {
                 <button
                   id="quick-action-ai-timetable"
                   onClick={() => setShowAIModal(true)}
-                  className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white transition-all duration-300 shadow-lg shadow-blue-600/20 hover:shadow-xl hover:shadow-blue-600/30 hover:-translate-y-0.5 group"
+                  className="flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-800 text-white transition-all duration-300 shadow-xl shadow-blue-600/20 hover:shadow-2xl hover:shadow-blue-600/30 hover:-translate-y-0.5 group"
                 >
                   <div className="flex items-center gap-3">
-                    <Sparkles size={16} className="text-yellow-300" />
+                    <Sparkles size={18} className="text-yellow-300" />
                     <span className="text-sm font-black tracking-tight">Generate AI Timetable</span>
                   </div>
                   <ArrowRight size={18} className="text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
@@ -164,6 +181,7 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
       </div>
 
       {/* ── AI Timetable Generation Modal ───────────────────────────────── */}
@@ -177,10 +195,10 @@ export default function DashboardPage() {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Sub-components (unchanged from original)
+// Sub-components (memoized for performance)
 // ────────────────────────────────────────────────────────────────────────────
 
-function MetricCard({ title, value, icon, subtitle }: any) {
+const MetricCard = memo(({ title, value, icon, subtitle }: any) => {
   return (
     <div className="rounded-3xl border border-blue-100 bg-white p-7 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
       <div className="flex items-center justify-between mb-4">
@@ -188,36 +206,41 @@ function MetricCard({ title, value, icon, subtitle }: any) {
           {icon}
         </div>
       </div>
-      <div className="text-4xl font-black text-slate-900 tracking-tighter">{value}</div>
-      <div className="text-sm font-bold text-blue-900 mt-2">{title}</div>
-      <p className="text-xs text-slate-400 mt-1 font-medium">{subtitle}</p>
+      <div className="text-4xl font-black text-blue-900 tracking-tighter">{value}</div>
+      <div className="text-sm font-black text-blue-600 mt-2 uppercase tracking-wide">{title}</div>
+      <p className="text-xs text-slate-400 mt-1 font-bold">{subtitle}</p>
     </div>
   );
-}
+});
 
-function StatusItem({ label, status, time, icon }: any) {
+const StatusItem = memo(({ label, status, time, icon }: any) => {
   return (
     <div className="flex items-center justify-between p-4 rounded-2xl border border-blue-50 bg-white hover:border-blue-200 transition-colors">
       <div className="flex items-center gap-4">
         <div className="p-2 bg-blue-50/50 rounded-xl">{icon}</div>
-        <span className="text-sm font-bold text-slate-700">{label}</span>
+        <span className="text-sm font-black text-slate-700">{label}</span>
       </div>
       <div className="text-right">
         <div className="text-sm font-black text-blue-900">{status}</div>
-        {time && <div className="text-[10px] text-slate-400 font-bold uppercase">{time}</div>}
+        {time && <div className="text-[10px] text-blue-400 font-black uppercase tracking-tight">{time}</div>}
       </div>
     </div>
   );
-}
+});
 
-function QuickActionLink({ href, label }: any) {
+const QuickActionLink = memo(({ href, label }: any) => {
   return (
     <Link
       href={href}
       className="flex items-center justify-between p-4 rounded-2xl bg-blue-50/50 hover:bg-blue-600 text-blue-900 hover:text-white transition-all duration-300 group shadow-sm"
     >
-      <span className="text-sm font-black tracking-tight">{label}</span>
+      <span className="text-sm font-black tracking-tighter uppercase">{label}</span>
       <ArrowRight size={18} className="text-blue-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
     </Link>
   );
-}
+});
+
+MetricCard.displayName = 'MetricCard';
+StatusItem.displayName = 'StatusItem';
+QuickActionLink.displayName = 'QuickActionLink';
+

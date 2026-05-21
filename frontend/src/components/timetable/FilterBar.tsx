@@ -43,24 +43,7 @@ export function FilterBar({ viewAs, setViewAs, selectedId, setSelectedId, showEm
         </select>
       </div>
 
-      <div className="flex items-center gap-4 shrink-0">
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input 
-            type="checkbox"
-            checked={showEmpty}
-            onChange={(e) => setShowEmpty(e.target.checked)}
-            className="w-4 h-4 rounded border-blue-200 text-blue-600 focus:ring-blue-600"
-          />
-          <span className="text-sm font-medium text-slate-600">Show empty slots</span>
-        </label>
 
-        <div className="h-6 w-px bg-blue-100" />
-
-        <div className="flex items-center gap-1 bg-blue-50 rounded-lg p-1">
-          <button className="px-3 py-1 text-xs font-black bg-white text-blue-900 rounded-md shadow-sm transition-all">Week</button>
-          <button className="px-3 py-1 text-xs font-bold text-blue-400 hover:text-blue-900 rounded-md transition-all">Month</button>
-        </div>
-      </div>
     </div>
   );
 }

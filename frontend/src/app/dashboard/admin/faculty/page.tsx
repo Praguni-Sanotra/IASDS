@@ -89,58 +89,58 @@ export default function FacultyPage() {
 
   const columns = [
     { key: 'employeeId', header: 'Emp ID' },
-    { key: 'name', header: 'Name', render: (row: any) => <div className="font-medium text-zinc-900 dark:text-white">{row.name}</div> },
+    { key: 'name', header: 'Name', render: (row: any) => <div className="font-extrabold text-blue-900">{row.name}</div> },
     { key: 'email', header: 'Email' },
     { key: 'department', header: 'Department', render: (row: any) => (
-      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300">
+      <span className="inline-flex items-center px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-100">
         {row.department}
       </span>
     )},
     { key: 'isActive', header: 'Status', render: (row: any) => (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${row.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${row.isActive ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500'}`}>
         {row.isActive ? 'Active' : 'Inactive'}
       </span>
     )},
   ];
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Faculty Management</h1>
-          <p className="text-sm text-zinc-500">Manage all faculty members, their departments, and availability.</p>
+          <h1 className="text-3xl font-black tracking-tight text-blue-950">Faculty Management</h1>
+          <p className="text-sm font-medium text-slate-500">Registry of institutional academic staff and profiles.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={() => setIsUploadOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-zinc-700 bg-white border border-zinc-200 hover:bg-zinc-50 dark:text-zinc-300 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold text-blue-600 bg-white border-2 border-blue-100 hover:bg-blue-50 transition-all shadow-sm active:scale-95"
           >
-            <UploadCloud size={16} /> Import Excel/CSV
+            <UploadCloud size={18} /> Import
           </button>
-          <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm">
-            <Plus size={16} /> Add Faculty
+          <button className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all active:scale-95">
+            <Plus size={18} /> Add Faculty
           </button>
         </div>
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-5 rounded-[24px] shadow-sm border border-blue-50">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400" size={18} />
           <input 
             type="text" 
-            placeholder="Search by name, email, or ID..." 
+            placeholder="Search registry..." 
             value={search}
             onChange={handleSearchChange}
-            className="w-full pl-10 pr-4 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent focus:ring-2 focus:ring-blue-600 focus:outline-none dark:text-white"
+            className="w-full pl-12 pr-4 h-12 text-sm font-bold rounded-2xl border-2 border-slate-50 bg-slate-50/50 focus:border-blue-200 focus:bg-white focus:ring-4 focus:ring-blue-50 focus:outline-none transition-all placeholder:text-slate-400"
           />
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          {/* Add filter dropdowns here later */}
         </div>
       </div>
+
 
       {/* Table Component */}
       <DataTable 

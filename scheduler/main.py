@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import schedule, reschedule
+from routers import schedule, reschedule, llm
 from routers.generate_sync import router as generate_sync_router
 
 app = FastAPI(title="IASDS Scheduler Service", version="1.0.0")
@@ -20,7 +20,7 @@ app.include_router(reschedule.router, tags=["Reschedule"])
 # Synchronous generation (direct CSP, no Celery/Redis needed)
 app.include_router(generate_sync_router, tags=["Generate Sync"])
 
-# app.include_router(llm.router, prefix="/llm", tags=["LLM"])
+app.include_router(llm.router, prefix="/llm", tags=["LLM"])
 
 
 @app.get("/")

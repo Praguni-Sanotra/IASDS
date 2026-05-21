@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useTheme } from 'next-themes';
 import { 
   LayoutDashboard, Calendar, Users, BookOpen, 
-  DoorOpen, Sliders, BarChart3, Bot, FileClock,
-  Menu, X, Sun, Moon, LogOut, UploadCloud
+  DoorOpen, Sliders, BarChart3,
+  Menu, X, LogOut, UploadCloud
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import apiClient from '../../lib/apiClient';
@@ -19,7 +18,6 @@ const getNavItems = (role: string) => {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Timetable', href: '/dashboard/timetable', icon: Calendar },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-    { name: 'Assistant', href: '/dashboard/assistant', icon: Bot },
   ];
 
   if (role === 'ADMIN') {
@@ -31,27 +29,31 @@ const getNavItems = (role: string) => {
       { name: 'Constraints', href: '/dashboard/admin/constraints', icon: Sliders },
       ...common.slice(2),
       { name: 'Bulk Import', href: '/dashboard/admin/import', icon: UploadCloud },
-      { name: 'Audit Log', href: '/dashboard/admin/audit-log', icon: FileClock },
     ];
   }
   
+  if (role === 'HOD') {
+    return [
+      { name: 'Dashboard', href: '/dashboard/hod', icon: LayoutDashboard },
+      common[1], // Timetable
+    ];
+  }
+
   if (role === 'STUDENT') {
     return [
       common[0],
       common[1],
-      common[3],
     ];
   }
 
   return common; // FACULTY
 };
 
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, logout } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -162,7 +164,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <button 
                 onClick={handleLogout}
-                className="p-2 ml-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                className="p-2 ml-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                 title="Logout"
               >
                 <LogOut size={20} />

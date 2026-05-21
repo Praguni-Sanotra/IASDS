@@ -12,7 +12,7 @@ import {
 import apiClient from '../../../lib/apiClient';
 import { cn } from '../../../lib/utils';
 
-const COLORS = ['#3b82f6', '#8b5cf6', '#14b8a6', '#f59e0b', '#ef4444'];
+const COLORS = ['#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
 
 export default function AnalyticsPage() {
   const [overview, setOverview] = useState<any>(null);
@@ -84,8 +84,8 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Total Faculty" value={overview?.totalFaculty || 0} icon={<Users className="text-blue-600" />} subtitle="Active staff" />
         <StatCard title="Total Rooms" value={overview?.totalRooms || 0} icon={<Home className="text-blue-600" />} subtitle="Physical spaces" />
-        <StatCard title="Active Conflicts" value={overview?.activeTimetable?.conflictCount || 0} icon={<AlertCircle className={overview?.activeTimetable?.conflictCount > 0 ? "text-red-500" : "text-emerald-500"} />} subtitle="In last generation" />
-        <StatCard title="Fairness Score" value={Math.round(overview?.avgFairnessScore * 100) / 100 || 0} icon={<Zap className="text-blue-600" />} subtitle="Distribution quality" />
+        <StatCard title="Active Conflicts" value={overview?.activeTimetable?.conflictCount || 0} icon={<AlertCircle className="text-blue-500" />} subtitle="In last generation" />
+        <StatCard title="Fairness Score" value={Math.round(overview?.avgFairnessScore * 100) / 100 || 0} icon={<Zap className="text-blue-400" />} subtitle="Distribution quality" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -111,7 +111,7 @@ export default function AnalyticsPage() {
                   />
                   <Bar dataKey="assignedHours" radius={[6, 6, 0, 0]}>
                     {workload.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.utilizationPct > 90 ? '#ef4444' : (entry.utilizationPct < 50 ? '#10b981' : '#3b82f6')} />
+                      <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#1e40af' : '#3b82f6'} />
                     ))}
                   </Bar>
                   <ReferenceLine y={18} stroke="#cbd5e1" strokeDasharray="5 5" label={{ position: 'right', value: 'Max', fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} />

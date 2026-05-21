@@ -7,8 +7,7 @@ pydantic
 python-dotenv
 ortools
 deap
-numpy
+numpy<2.0
 pandas
 httpx
-langchain
-langchain-openai
+groq

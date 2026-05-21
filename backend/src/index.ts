@@ -23,6 +23,8 @@ import scheduleRoutes from './routes/scheduleRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import exportRoutes from './routes/exportRoutes';
 import adminTimetableRoutes from './routes/adminTimetableRoutes';
+import hodRoutes from './routes/hodRoutes';
+
 import { verifyToken, requireRole } from './middleware/auth';
 
 dotenv.config();
@@ -121,6 +123,8 @@ app.use('/api/schedule', scheduleRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/admin', adminTimetableRoutes); // AI timetable generation
+app.use('/api/hod', hodRoutes); // HOD approval workflows
+
 
 // --- HEALTH CHECKS ---
 

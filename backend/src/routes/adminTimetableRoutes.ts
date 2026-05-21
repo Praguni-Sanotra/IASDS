@@ -7,12 +7,19 @@ import {
   updateTimetableSlot,
   addTimetableSlot,
   deleteTimetableSlot,
+  sendTimetableToHOD,
 } from '../controllers/adminTimetableController';
 
 const router = Router();
 
 // All routes require ADMIN role
 router.use(verifyToken, requireRole('ADMIN'));
+
+/**
+ * Timetable Management
+ */
+router.post('/timetable/:id/send-to-hod', sendTimetableToHOD);
+
 
 /**
  * POST /api/admin/generate-timetable

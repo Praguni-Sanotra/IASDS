@@ -1,16 +1,30 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Download, Share2, FileText, Calendar as CalendarIcon, Printer, Sparkles, Plus } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import { Download, Share2, FileText, Calendar as CalendarIcon, Printer, Sparkles, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { TimetableCalendar } from '../../../components/timetable/TimetableCalendar';
 import { FilterBar } from '../../../components/timetable/FilterBar';
 import { SlotDetailPopover } from '../../../components/timetable/SlotDetailPopover';
 import { GenerationPanel } from '../../../components/timetable/GenerationPanel';
-import GenerateAITimetableModal from '../../../components/modals/GenerateAITimetableModal';
 import { useAuthStore } from '../../../store/authStore';
 import apiClient from '../../../lib/apiClient';
+
+// Lazy load heavy components
+const TimetableCalendar = dynamic(() => import('../../../components/timetable/TimetableCalendar').then(mod => mod.TimetableCalendar), {
+  loading: () => (
+    <div className="w-full h-[600px] bg-zinc-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-zinc-200">
+      <Loader2 className="animate-spin text-blue-600" size={32} />
+    </div>
+  ),
+  ssr: false
+});
+
+const GenerateAITimetableModal = dynamic(() => import('../../../components/modals/GenerateAITimetableModal'), {
+  ssr: false
+});
+
 
 
 export default function TimetablePage() {
@@ -220,38 +234,26 @@ export default function TimetablePage() {
           <p className="text-sm font-medium text-slate-500">View and manage academic schedules across departments.</p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Export tools */}
-          <div className="hidden sm:flex items-center bg-blue-50 p-1 rounded-xl border border-blue-100">
-            <button
-              onClick={() => handleExport('pdf')}
-              className="p-2 hover:bg-white rounded-lg text-blue-600 transition-all"
-              title="Export PDF"
-            >
-              <FileText size={18} />
-            </button>
-            <button
-              onClick={() => handleExport('excel')}
-              className="p-2 hover:bg-white rounded-lg text-blue-600 transition-all"
-              title="Export Excel"
-            >
-              <Share2 size={18} />
-            </button>
-            <button
-              className="p-2 hover:bg-white rounded-lg text-blue-600 transition-all"
-              title="Print"
-            >
-              <Printer size={18} />
-            </button>
-          </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Show Empty Slots Checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer select-none bg-white border border-blue-100 px-4 py-2.5 rounded-2xl shadow-sm hover:bg-blue-50 transition-all">
+            <input
+              type="checkbox"
+              checked={showEmpty}
+              onChange={(e) => setShowEmpty(e.target.checked)}
+              className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            />
+            <span className="text-sm font-bold text-blue-900">Show empty slots</span>
+          </label>
 
           {/* Add to Calendar */}
           <button
             onClick={() => handleExport('ics')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-black rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+            className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white text-sm font-bold rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all active:scale-95"
           >
-            <CalendarIcon size={16} /> Add to Calendar
+            <CalendarIcon size={18} /> Add to Calendar
           </button>
+
 
           {/* Generate AI Timetable — Admin only */}
           {isAdmin && (
@@ -262,6 +264,26 @@ export default function TimetablePage() {
             >
               <Sparkles size={16} className="text-yellow-300" />
               Generate AI Timetable
+            </button>
+          )}
+
+          {/* Send to HOD — Admin only */}
+          {isAdmin && timetable && (
+            <button
+              onClick={async () => {
+                const toastId = toast.loading('Sending timetable to HOD for approval...');
+                try {
+                  // Mock API call
+                  await apiClient.post(`/admin/timetable/${timetable._id}/send-to-hod`);
+                  toast.success('Timetable submitted to HOD successfully!', { id: toastId });
+                } catch (error: any) {
+                  toast.error(error.response?.data?.message || 'Failed to send to HOD', { id: toastId });
+                }
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-black rounded-xl border border-indigo-200 transition-all active:scale-95"
+            >
+              <Share2 size={16} />
+              Send to HOD
             </button>
           )}
 

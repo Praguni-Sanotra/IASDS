@@ -34,6 +34,15 @@ const seedDatabase = async () => {
       department: 'ADMINISTRATION',
     });
 
+    console.log('🌱 Seeding HOD User...');
+    const hodUser = await User.create({
+      name: 'Dr. Sarah Smith',
+      email: 'hod@miet.ac.in',
+      password: hashedPassword,
+      role: UserRole.HOD,
+      department: 'CSE',
+    });
+
     console.log('🌱 Seeding Faculty...');
     const facultiesData = [
       { name: 'Dr. Alan Turing', email: 'alan.turing@miet.ac.in', empId: 'EMP001' },

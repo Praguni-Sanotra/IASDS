@@ -2,22 +2,22 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #0f172a;
-  --primary: #1e40af;
+  --foreground: #020617; /* Very dark blue-black for contrast */
+  --primary: #2563eb;    /* Vibrant Blue */
   --primary-foreground: #ffffff;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #020617;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --secondary: #eff6ff;
-  --secondary-foreground: #1e40af;
+  --popover-foreground: #020617;
+  --secondary: #f0f7ff;  /* Extremely light blue */
+  --secondary-foreground: #1d4ed8;
   --muted: #f8fafc;
-  --muted-foreground: #64748b;
-  --accent: #dbeafe;
-  --accent-foreground: #1e40af;
+  --muted-foreground: #475569;
+  --accent: #eff6ff;
+  --accent-foreground: #2563eb;
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #2563eb;
+  --ring: #3b82f6;
 }
 
 @theme inline {
@@ -31,7 +31,7 @@
 }
 
 body {
-  background: #f8fafc; /* Very light blue/gray tint for professional look */
+  background: #ffffff; 
   color: var(--foreground);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
