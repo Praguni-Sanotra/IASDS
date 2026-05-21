@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
-import ical from 'ical-generator';
+import ical, { ICalEventRepeatingFreq } from 'ical-generator';
 import Timetable from '../models/Timetable';
 import AuditLog from '../models/AuditLog';
 import { AuthRequest } from '../middleware/auth';
@@ -16,7 +16,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const fetchTimetableData = async (query: any) => {
-  const { timetableId, facultyId, batchId, department } = query;
+  const { timetableId, facultyId, batchId, batch, roomId, department } = query;
   
   let timetable;
   if (timetableId) {
@@ -36,8 +36,28 @@ const fetchTimetableData = async (query: any) => {
 
   // Filter slots
   let filteredSlots = timetable.slots;
-  if (facultyId) filteredSlots = filteredSlots.filter((s: any) => s.facultyId?._id?.toString() === facultyId);
-  if (batchId) filteredSlots = filteredSlots.filter((s: any) => s.batchId?.toString() === batchId);
+  if (facultyId) {
+    filteredSlots = filteredSlots.filter(
+      (s: any) => s.facultyId?._id?.toString() === facultyId || s.facultyId?.toString() === facultyId
+    );
+  }
+  const batchFilter = batchId || batch;
+  if (batchFilter) {
+    filteredSlots = filteredSlots.filter(
+      (s: any) => s.batch === batchFilter || s.batchId?.toString() === batchFilter
+    );
+  }
+  if (roomId) {
+    filteredSlots = filteredSlots.filter(
+      (s: any) => s.roomId?._id?.toString() === roomId || s.roomId?.toString() === roomId
+    );
+  }
+  if (department) {
+    filteredSlots = filteredSlots.filter((s: any) => {
+      const subDept = s.subjectId?.department;
+      return subDept && String(subDept).toUpperCase() === String(department).toUpperCase();
+    });
+  }
 
   // Organize into grid
   const grid: any = {};
@@ -205,7 +225,7 @@ const exportToICal = (res: Response, data: any, user: any) => {
       location: `Room ${slot.roomId?.roomNumber} (${slot.roomId?.building})`,
       description: `Faculty: ${slot.facultyId?.name}\nBatch: ${slot.batchId}`,
       repeating: {
-        freq: 'WEEKLY',
+        freq: ICalEventRepeatingFreq.WEEKLY,
         until: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000) // 120 days from now
       }
     });

@@ -3,7 +3,15 @@ import { validationResult } from 'express-validator';
 import Room from '../models/Room';
 import AuditLog from '../models/AuditLog';
 import { AuthRequest } from '../middleware/auth';
-import { parseUploadedFile, bulkSoftDelete } from '../utils/bulkOperations';
+import mongoose from 'mongoose';
+import {
+  parseUploadedFile,
+  bulkSoftDelete,
+  sendExcelTemplate,
+  sendCsvTemplate,
+  sendExcelExport,
+  extractIdsFromFile,
+} from '../utils/bulkOperations';
 import logger from '../utils/logger';
 
 export const getAllRooms = async (req: Request, res: Response): Promise<void> => {
@@ -247,8 +255,57 @@ export const bulkUploadRooms = async (req: AuthRequest, res: Response): Promise<
 };
 
 export const downloadTemplate = (req: Request, res: Response): void => {
-  const csvContent = 'roomNumber,building,floor,type,capacity,facilities\nL-101,Block A,1,LECTURE,60,"Projector, Whiteboard"\nLAB-201,Block B,2,LAB,30,"Computers, AC"\n';
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename=room_template.csv');
-  res.status(200).send(csvContent);
+  const format = (req.query.format as string) || 'xlsx';
+  const headers = ['roomNumber', 'building', 'floor', 'type', 'capacity', 'facilities'];
+  const sample = [['L-101', 'Block A', 1, 'LECTURE', 60, 'Projector, Whiteboard']];
+  if (format === 'csv') {
+    sendCsvTemplate(res, 'room_template.csv', headers, sample);
+  } else {
+    sendExcelTemplate(res, 'room_template.xlsx', headers, sample);
+  }
+};
+
+export const exportRooms = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rooms = await Room.find({ isActive: true }).sort({ roomNumber: 1 });
+    const headers = ['roomNumber', 'building', 'floor', 'type', 'capacity', 'facilities'];
+    const rows = rooms.map((r) => [
+      r.roomNumber,
+      r.building || '',
+      r.floor ?? '',
+      r.type,
+      r.capacity,
+      (r.facilities || []).join(', '),
+    ]);
+    sendExcelExport(res, 'rooms_export.xlsx', headers, rows);
+  } catch {
+    res.status(500).json({ message: 'Export failed' });
+  }
+};
+
+export const bulkDeleteRoomsFromFile = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ message: 'No file uploaded' });
+      return;
+    }
+    const identifiers = extractIdsFromFile(req.file.buffer, ['roomNumber', '_id', 'id']);
+    const objectIds = identifiers.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const rooms = await Room.find({
+      isActive: true,
+      $or: [
+        { roomNumber: { $in: identifiers } },
+        ...(objectIds.length ? [{ _id: { $in: objectIds } }] : []),
+      ],
+    });
+    const ids = rooms.map((r) => r._id.toString());
+    if (!ids.length) {
+      res.status(404).json({ message: 'No matching rooms found' });
+      return;
+    }
+    const result = await bulkSoftDelete(Room, ids, req.user?.id, req.ip, 'ROOM');
+    res.json({ message: 'Bulk delete from file completed', ...result });
+  } catch {
+    res.status(500).json({ message: 'Bulk delete failed' });
+  }
 };

@@ -16,11 +16,13 @@ const upload = multer({
 router.use(verifyToken);
 router.use(requireRole('ADMIN'));
 
-// Download Template
+// Download Template / Export
 router.get('/template', facultyController.downloadTemplate);
+router.get('/export', facultyController.exportFaculty);
 
 // Bulk Operations
 router.delete('/bulk', facultyController.bulkDeleteFaculty);
+router.post('/bulk-delete-file', upload.single('file'), facultyController.bulkDeleteFacultyFromFile);
 router.post('/bulk-upload', upload.single('file'), facultyController.bulkUploadFaculty);
 
 // CRUD Operations

@@ -7,7 +7,8 @@ import User, { UserRole } from '../models/User';
 import Subject from '../models/Subject';
 import AuditLog from '../models/AuditLog';
 import { AuthRequest } from '../middleware/auth';
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
+import { sendExcelTemplate, sendCsvTemplate, sendExcelExport, extractIdsFromFile } from '../utils/bulkOperations';
 
 // ==========================================
 // CRUD OPERATIONS
@@ -404,9 +405,75 @@ export const bulkUploadFaculty = async (req: AuthRequest, res: Response): Promis
 // ==========================================
 
 export const downloadTemplate = (req: Request, res: Response): void => {
-  const csvContent = 'name,email,department,phone,maxHoursPerWeek\nJohn Doe,john.doe@miet.ac.in,CSE,+919876543210,40\nJane Smith,jane.smith@miet.ac.in,ECE,,30\n';
-  
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename=faculty_template.csv');
-  res.status(200).send(csvContent);
+  const format = (req.query.format as string) || 'xlsx';
+  const headers = ['name', 'email', 'department', 'phone', 'maxHoursPerWeek'];
+  const sample = [['John Doe', 'john.doe@miet.ac.in', 'CSE', '+919876543210', 40]];
+  if (format === 'csv') {
+    sendCsvTemplate(res, 'faculty_template.csv', headers, sample);
+  } else {
+    sendExcelTemplate(res, 'faculty_template.xlsx', headers, sample);
+  }
+};
+
+export const exportFaculty = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const faculties = await Faculty.find({ isActive: true }).sort({ name: 1 });
+    const headers = ['employeeId', 'name', 'email', 'department', 'phone', 'maxHoursPerWeek'];
+    const rows = faculties.map((f) => [
+      f.employeeId,
+      f.name,
+      f.email,
+      f.department,
+      f.phone || '',
+      f.maxHoursPerWeek,
+    ]);
+    sendExcelExport(res, 'faculty_export.xlsx', headers, rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Export failed' });
+  }
+};
+
+export const bulkDeleteFacultyFromFile = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ message: 'No file uploaded' });
+      return;
+    }
+    const identifiers = extractIdsFromFile(req.file.buffer, ['employeeId', 'email', '_id', 'id']);
+    if (identifiers.length === 0) {
+      res.status(400).json({ message: 'No identifiers found in file (use employeeId, email, or _id column)' });
+      return;
+    }
+    const objectIds = identifiers.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const faculties = await Faculty.find({
+      isActive: true,
+      $or: [
+        { employeeId: { $in: identifiers } },
+        { email: { $in: identifiers.map((e) => e.toLowerCase()) } },
+        ...(objectIds.length ? [{ _id: { $in: objectIds } }] : []),
+      ],
+    });
+    const foundIds = faculties.map((f) => f._id.toString());
+    if (foundIds.length === 0) {
+      res.status(404).json({ message: 'No matching faculty found', notFound: identifiers });
+      return;
+    }
+    await Faculty.updateMany({ _id: { $in: foundIds } }, { $set: { isActive: false } });
+    const userIds = faculties.map((f) => f.userId);
+    await User.updateMany({ _id: { $in: userIds } }, { $set: { isActive: false } });
+    await AuditLog.create({
+      action: 'BULK_DELETE',
+      entity: 'FACULTY',
+      performedBy: req.user?.id,
+      ipAddress: req.ip,
+      details: { deletedCount: foundIds.length, source: 'file', ids: foundIds },
+    });
+    res.json({
+      message: 'Bulk delete from file completed',
+      deleted: foundIds.length,
+      notFound: identifiers.filter((id) => !faculties.some((f) => f.employeeId === id || f.email.toLowerCase() === id.toLowerCase() || f._id.toString() === id)),
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Bulk delete failed' });
+  }
 };

@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import { 
   Users, BookOpen, DoorOpen, UploadCloud, 
-  Download, CheckCircle2, AlertCircle, FileSpreadsheet 
+  Download, CheckCircle2, AlertCircle, FileSpreadsheet, Layers
 } from 'lucide-react';
 import { BulkUploadModal } from '../../../../components/modals/BulkUploadModal';
 
 export default function BulkImportPage() {
   const [activeEntity, setActiveEntity] = useState<any>(null);
+  const [modalMode, setModalMode] = useState<'import' | 'delete'>('import');
 
   const importOptions = [
     {
@@ -18,6 +19,8 @@ export default function BulkImportPage() {
       icon: <Users className="text-blue-600" />,
       templateUrl: '/faculty/template',
       uploadUrl: '/faculty/bulk-upload',
+      deleteUrl: '/faculty/bulk-delete-file',
+      exportUrl: '/faculty/export',
       color: 'blue'
     },
     {
@@ -27,6 +30,8 @@ export default function BulkImportPage() {
       icon: <BookOpen className="text-purple-600" />,
       templateUrl: '/subjects/template',
       uploadUrl: '/subjects/bulk-upload',
+      deleteUrl: '/subjects/bulk-delete-file',
+      exportUrl: '/subjects/export',
       color: 'purple'
     },
     {
@@ -36,9 +41,25 @@ export default function BulkImportPage() {
       icon: <DoorOpen className="text-teal-600" />,
       templateUrl: '/rooms/template',
       uploadUrl: '/rooms/bulk-upload',
+      deleteUrl: '/rooms/bulk-delete-file',
+      exportUrl: '/rooms/export',
       color: 'teal'
+    },
+    {
+      id: 'mappings',
+      name: 'Subject-Faculty Mapping',
+      description: 'Import mappings to assign subjects to eligible faculty members.',
+      icon: <Layers className="text-amber-600" />,
+      templateUrl: '/subjects/mapping-template',
+      uploadUrl: '/subjects/mapping-upload',
+      color: 'amber'
     }
   ];
+
+  const openModal = (option: typeof importOptions[0], mode: 'import' | 'delete') => {
+    setModalMode(mode);
+    setActiveEntity(option);
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -69,18 +90,19 @@ export default function BulkImportPage() {
             
             <div className="flex flex-col gap-2">
               <button 
-                onClick={() => setActiveEntity(option)}
+                onClick={() => openModal(option, 'import')}
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
               >
-                <UploadCloud size={16} /> Start Import
+                <UploadCloud size={16} /> Import Excel/CSV
               </button>
-              <a 
-                href={`${process.env.NEXT_PUBLIC_API_URL}${option.templateUrl}`}
-                target="_blank"
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-semibold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-              >
-                <Download size={14} /> Download Excel Template
-              </a>
+              {'deleteUrl' in option && option.deleteUrl && (
+                <button
+                  onClick={() => openModal(option, 'delete')}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors"
+                >
+                  Bulk Delete via File
+                </button>
+              )}
             </div>
 
             {/* Background Icon */}
@@ -127,6 +149,9 @@ export default function BulkImportPage() {
           entityName={activeEntity.name}
           templateUrl={activeEntity.templateUrl}
           uploadUrl={activeEntity.uploadUrl}
+          deleteUrl={activeEntity.deleteUrl}
+          exportUrl={activeEntity.exportUrl}
+          mode={modalMode}
           onSuccess={() => setActiveEntity(null)}
         />
       )}

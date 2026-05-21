@@ -22,6 +22,7 @@ import constraintRoutes from './routes/constraintRoutes';
 import scheduleRoutes from './routes/scheduleRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import exportRoutes from './routes/exportRoutes';
+import adminTimetableRoutes from './routes/adminTimetableRoutes';
 import { verifyToken, requireRole } from './middleware/auth';
 
 dotenv.config();
@@ -104,7 +105,7 @@ app.use(hpp());
 
 // 5. Logging
 app.use(morgan('combined', { 
-  stream: { write: (message) => logger.info(message.trim()) } 
+  stream: { write: (message: string) => logger.info(message.trim()) } 
 }));
 
 app.use(cookieParser());
@@ -119,6 +120,7 @@ app.use('/api/constraints', constraintRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/admin', adminTimetableRoutes); // AI timetable generation
 
 // --- HEALTH CHECKS ---
 

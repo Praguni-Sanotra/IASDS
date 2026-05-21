@@ -67,7 +67,7 @@ export function EventCard({ event }: EventCardProps) {
         <div className="flex items-center gap-1.5 opacity-90">
           <MapPin size={10} className={style.iconColor} />
           <span className="text-[10px] font-medium truncate">
-            {extendedProps.roomName || extendedProps.roomId?.name || 'Room TBA'}
+            {extendedProps.roomName || extendedProps.roomId?.roomNumber || extendedProps.roomId?.name || 'Room TBA'}
           </span>
         </div>
       </div>

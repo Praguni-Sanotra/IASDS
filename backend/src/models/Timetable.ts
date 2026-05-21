@@ -33,18 +33,21 @@ export interface ITimetable extends Document {
   fairnessScore: number;
 }
 
-const SlotSchema: Schema = new Schema({
-  day: { type: String, enum: Object.values(DayOfWeek), required: true },
-  period: { type: Number, required: true },
-  startTime: { type: String, required: true },
-  endTime: { type: String, required: true },
-  subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
-  facultyId: { type: Schema.Types.ObjectId, ref: 'Faculty', required: true },
-  roomId: { type: Schema.Types.ObjectId, ref: 'Room', required: true },
-  batch: { type: String },
-  section: { type: String },
-  isLab: { type: Boolean, default: false },
-});
+const SlotSchema: Schema = new Schema(
+  {
+    day: { type: String, enum: Object.values(DayOfWeek), required: true },
+    period: { type: Number, required: true },
+    startTime: { type: String, required: true },
+    endTime: { type: String, required: true },
+    subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
+    facultyId: { type: Schema.Types.ObjectId, ref: 'Faculty', required: true },
+    roomId: { type: Schema.Types.ObjectId, ref: 'Room', required: true },
+    batch: { type: String },
+    section: { type: String },
+    isLab: { type: Boolean, default: false },
+  },
+  { _id: true }
+);
 
 const TimetableSchema: Schema = new Schema(
   {

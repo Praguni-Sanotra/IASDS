@@ -52,9 +52,11 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
                 ? "bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-500/10" 
                 : "bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 rounded-tl-none shadow-sm"
             )}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose dark:prose-invert prose-sm max-w-none">
-                {msg.content}
-              </ReactMarkdown>
+              <div className="prose dark:prose-invert prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm] as any}>
+                  {msg.content}
+                </ReactMarkdown>
+              </div>
               
               {msg.role === 'assistant' && i === messages.length - 1 && isStreaming && (
                 <span className="inline-block w-1.5 h-4 ml-1 bg-blue-500 animate-pulse align-middle" />

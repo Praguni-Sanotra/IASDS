@@ -4,7 +4,15 @@ import Subject from '../models/Subject';
 import Faculty from '../models/Faculty';
 import AuditLog from '../models/AuditLog';
 import { AuthRequest } from '../middleware/auth';
-import { parseUploadedFile, bulkSoftDelete } from '../utils/bulkOperations';
+import mongoose from 'mongoose';
+import {
+  parseUploadedFile,
+  bulkSoftDelete,
+  sendExcelTemplate,
+  sendCsvTemplate,
+  sendExcelExport,
+  extractIdsFromFile,
+} from '../utils/bulkOperations';
 
 export const getAllSubjects = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -230,8 +238,151 @@ export const bulkUploadSubjects = async (req: AuthRequest, res: Response): Promi
 };
 
 export const downloadTemplate = (req: Request, res: Response): void => {
-  const csvContent = 'code,name,credits,hoursPerWeek,type,department,semester\nCS101,Introduction to Programming,3,3,THEORY,CSE,1\nCS101L,Programming Lab,2,2,LAB,CSE,1\n';
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename=subject_template.csv');
-  res.status(200).send(csvContent);
+  const format = (req.query.format as string) || 'xlsx';
+  const headers = ['code', 'name', 'credits', 'hoursPerWeek', 'type', 'department', 'semester'];
+  const sample = [['CS101', 'Introduction to Programming', 3, 3, 'THEORY', 'CSE', 1]];
+  if (format === 'csv') {
+    sendCsvTemplate(res, 'subject_template.csv', headers, sample);
+  } else {
+    sendExcelTemplate(res, 'subject_template.xlsx', headers, sample);
+  }
 };
+
+export const downloadMappingTemplate = (req: Request, res: Response): void => {
+  const format = (req.query.format as string) || 'xlsx';
+  const headers = ['subjectCode', 'employeeId', 'isPrimary'];
+  const sample = [['CS101', 'EMP001', 'true']];
+  if (format === 'csv') {
+    sendCsvTemplate(res, 'subject_faculty_mapping_template.csv', headers, sample);
+  } else {
+    sendExcelTemplate(res, 'subject_faculty_mapping_template.xlsx', headers, sample);
+  }
+};
+
+export const exportSubjects = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const subjects = await Subject.find({ isActive: true }).sort({ code: 1 });
+    const headers = ['code', 'name', 'credits', 'hoursPerWeek', 'type', 'department', 'semester'];
+    const rows = subjects.map((s) => [
+      s.code,
+      s.name,
+      s.credits,
+      s.hoursPerWeek,
+      s.type,
+      s.department,
+      s.semester,
+    ]);
+    sendExcelExport(res, 'subjects_export.xlsx', headers, rows);
+  } catch {
+    res.status(500).json({ message: 'Export failed' });
+  }
+};
+
+export const bulkDeleteSubjectsFromFile = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ message: 'No file uploaded' });
+      return;
+    }
+    const identifiers = extractIdsFromFile(req.file.buffer, ['code', '_id', 'id']);
+    const objectIds = identifiers.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const subjects = await Subject.find({
+      isActive: true,
+      $or: [
+        { code: { $in: identifiers.map((c) => c.toUpperCase()) } },
+        ...(objectIds.length ? [{ _id: { $in: objectIds } }] : []),
+      ],
+    });
+    const ids = subjects.map((s) => s._id.toString());
+    if (!ids.length) {
+      res.status(404).json({ message: 'No matching subjects found' });
+      return;
+    }
+    const result = await bulkSoftDelete(Subject, ids, req.user?.id, req.ip, 'SUBJECT');
+    res.json({ message: 'Bulk delete from file completed', ...result });
+  } catch {
+    res.status(500).json({ message: 'Bulk delete failed' });
+  }
+};
+
+export const bulkUploadMappings = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ message: 'No file uploaded' });
+      return;
+    }
+
+    const data = parseUploadedFile(req.file.buffer, req.file.mimetype);
+    let successCount = 0;
+    let failedCount = 0;
+    const errors: Array<{ row: number; reason: string }> = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowNumber = i + 2;
+
+      const { subjectCode, employeeId, isPrimary } = row;
+
+      if (!subjectCode || !employeeId) {
+        failedCount++;
+        errors.push({ row: rowNumber, reason: 'Missing required fields (subjectCode, employeeId)' });
+        continue;
+      }
+
+      // Find subject
+      const subject = await Subject.findOne({ code: String(subjectCode).toUpperCase(), isActive: true });
+      if (!subject) {
+        failedCount++;
+        errors.push({ row: rowNumber, reason: `Active subject with code ${subjectCode} not found` });
+        continue;
+      }
+
+      // Find faculty
+      const faculty = await Faculty.findOne({ employeeId: String(employeeId), isActive: true });
+      if (!faculty) {
+        failedCount++;
+        errors.push({ row: rowNumber, reason: `Active faculty with employee ID ${employeeId} not found` });
+        continue;
+      }
+
+      const isPrimaryBool = String(isPrimary).toLowerCase() === 'true';
+
+      // 1. Add Faculty to Subject.eligibleFaculty if not already there
+      const facId = faculty._id;
+      if (!subject.eligibleFaculty.some((id: any) => id.toString() === facId.toString())) {
+        subject.eligibleFaculty.push(facId);
+        await subject.save();
+      }
+
+      // 2. Add Subject to Faculty.subjectsTaught if not already there
+      const subId = subject._id;
+      if (!faculty.subjectsTaught.some((s: any) => s.subjectId.toString() === subId.toString())) {
+        faculty.subjectsTaught.push({ subjectId: subId, isPrimary: isPrimaryBool });
+        await faculty.save();
+      } else {
+        // If already there, update isPrimary
+        const mappingIndex = faculty.subjectsTaught.findIndex((s: any) => s.subjectId.toString() === subId.toString());
+        if (mappingIndex > -1) {
+          faculty.subjectsTaught[mappingIndex].isPrimary = isPrimaryBool;
+          await faculty.save();
+        }
+      }
+
+      successCount++;
+    }
+
+    await AuditLog.create({
+      action: 'BULK_UPLOAD',
+      entity: 'SUBJECT_FACULTY_MAPPING',
+      performedBy: req.user?.id,
+      ipAddress: req.ip,
+      details: { file: req.file.originalname, successCount, failedCount },
+    });
+
+    res.json({ success: successCount, failed: failedCount, errors });
+  } catch (error) {
+    console.error('bulkUploadMappings error:', error);
+    res.status(500).json({ message: 'Internal server error while processing mappings file' });
+  }
+};
+

@@ -3,16 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import apiClient from '../../lib/apiClient';
-import { 
-  Users, BookOpen, DoorOpen, Calendar, 
-  ArrowRight, Clock, ShieldCheck, AlertCircle 
+import {
+  Users, BookOpen, DoorOpen, Calendar,
+  ArrowRight, Clock, ShieldCheck, AlertCircle, Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import GenerateAITimetableModal from '../../components/modals/GenerateAITimetableModal';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const router = useRouter();
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -28,63 +32,87 @@ export default function DashboardPage() {
     fetchStats();
   }, []);
 
+  // After successful generation: navigate to timetable page
+  const handleGenerationSuccess = () => {
+    router.push('/dashboard/timetable');
+  };
+
   if (!user) return null;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Hero Section */}
+
+      {/* ── Hero Section ───────────────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-3xl bg-blue-600 p-8 text-white shadow-2xl shadow-blue-500/20">
         <div className="relative z-10">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
             Welcome back, {user.name}
           </h1>
           <p className="mt-2 text-blue-100 max-w-xl text-lg">
-            System status is optimal. You have access to {user.role === 'ADMIN' ? 'all administrative' : 'departmental'} scheduling tools.
+            System status is optimal. You have access to{' '}
+            {user.role === 'ADMIN' ? 'all administrative' : 'departmental'} scheduling tools.
           </p>
           <div className="mt-6 flex flex-wrap gap-4">
-            <Link 
+            <Link
               href="/dashboard/timetable"
               className="px-6 py-2.5 bg-white text-blue-600 rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors flex items-center gap-2"
             >
               View Timetable <ArrowRight size={18} />
             </Link>
+
+            {/* ── AI Generate button — Admin only ─────────────────────── */}
+            {user.role === 'ADMIN' && (
+              <button
+                id="generate-ai-timetable-btn"
+                onClick={() => setShowAIModal(true)}
+                className="px-6 py-2.5 bg-white/15 hover:bg-white/25 border border-white/30 text-white rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center gap-2 backdrop-blur-sm"
+              >
+                <Sparkles size={17} className="text-yellow-300" />
+                Generate AI Timetable
+              </button>
+            )}
           </div>
         </div>
         {/* Abstract background shapes */}
         <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-48 h-48 bg-blue-400/20 rounded-full blur-2xl" />
       </div>
-      
-      {/* Real-time Metrics */}
+
+      {/* ── Real-time Metrics ──────────────────────────────────────────── */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard 
-          title="Total Faculty" 
-          value={isLoading ? '...' : stats?.totalFaculty} 
-          icon={<Users size={20} className="text-blue-600" />} 
+        <MetricCard
+          title="Total Faculty"
+          value={isLoading ? '...' : stats?.totalFaculty}
+          icon={<Users size={20} className="text-blue-600" />}
           subtitle="Active members"
         />
-        <MetricCard 
-          title="Subjects" 
-          value={isLoading ? '...' : stats?.totalSubjects} 
-          icon={<BookOpen size={20} className="text-blue-600" />} 
+        <MetricCard
+          title="Subjects"
+          value={isLoading ? '...' : stats?.totalSubjects}
+          icon={<BookOpen size={20} className="text-blue-600" />}
           subtitle="Curriculum items"
         />
-        <MetricCard 
-          title="Rooms" 
-          value={isLoading ? '...' : stats?.totalRooms} 
-          icon={<DoorOpen size={20} className="text-blue-600" />} 
+        <MetricCard
+          title="Rooms"
+          value={isLoading ? '...' : stats?.totalRooms}
+          icon={<DoorOpen size={20} className="text-blue-600" />}
           subtitle="Available spaces"
         />
-        <MetricCard 
-          title="Conflicts" 
-          value={isLoading ? '...' : stats?.activeTimetable?.conflictCount || 0} 
-          icon={<AlertCircle size={20} className={stats?.activeTimetable?.conflictCount > 0 ? "text-red-500" : "text-emerald-500"} />} 
+        <MetricCard
+          title="Conflicts"
+          value={isLoading ? '...' : stats?.activeTimetable?.conflictCount || 0}
+          icon={
+            <AlertCircle
+              size={20}
+              className={stats?.activeTimetable?.conflictCount > 0 ? "text-red-500" : "text-emerald-500"}
+            />
+          }
           subtitle="Current status"
         />
       </div>
-      
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        {/* Latest Activity */}
+        {/* ── System Status ────────────────────────────────────────────── */}
         <div className="rounded-3xl border border-blue-100 bg-white p-8 shadow-sm lg:col-span-4">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-black text-blue-900 flex items-center gap-3">
@@ -92,17 +120,17 @@ export default function DashboardPage() {
             </h3>
           </div>
           <div className="space-y-4">
-            <StatusItem 
-              label="Database" 
-              status="Connected" 
-              time="Real-time" 
-              icon={<ShieldCheck size={18} className="text-emerald-500" />} 
+            <StatusItem
+              label="Database"
+              status="Connected"
+              time="Real-time"
+              icon={<ShieldCheck size={18} className="text-emerald-500" />}
             />
-            <StatusItem 
-              label="Last Schedule Generation" 
-              status={stats?.lastGeneratedAt ? new Date(stats.lastGeneratedAt).toLocaleDateString() : 'N/A'} 
+            <StatusItem
+              label="Last Schedule Generation"
+              status={stats?.lastGeneratedAt ? new Date(stats.lastGeneratedAt).toLocaleDateString() : 'N/A'}
               time={stats?.lastGeneratedAt ? new Date(stats.lastGeneratedAt).toLocaleTimeString() : ''}
-              icon={<Calendar size={18} className="text-blue-500" />} 
+              icon={<Calendar size={18} className="text-blue-500" />}
             />
             <div className="p-5 rounded-2xl bg-blue-50/50 text-sm text-blue-800 font-medium italic border border-blue-100">
               "The AI scheduler is ready to generate new patterns based on current constraints."
@@ -110,7 +138,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
+        {/* ── Quick Actions ─────────────────────────────────────────────── */}
         <div className="rounded-3xl border border-blue-100 bg-white p-8 shadow-sm lg:col-span-3">
           <h3 className="text-xl font-black text-blue-900 mb-8">Quick Actions</h3>
           <div className="grid grid-cols-1 gap-4">
@@ -118,6 +146,18 @@ export default function DashboardPage() {
             <QuickActionLink href="/dashboard/analytics" label="System Analytics" />
             {user.role === 'ADMIN' && (
               <>
+                {/* AI Timetable card-style button */}
+                <button
+                  id="quick-action-ai-timetable"
+                  onClick={() => setShowAIModal(true)}
+                  className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white transition-all duration-300 shadow-lg shadow-blue-600/20 hover:shadow-xl hover:shadow-blue-600/30 hover:-translate-y-0.5 group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Sparkles size={16} className="text-yellow-300" />
+                    <span className="text-sm font-black tracking-tight">Generate AI Timetable</span>
+                  </div>
+                  <ArrowRight size={18} className="text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                </button>
                 <QuickActionLink href="/dashboard/admin/import" label="Bulk Data Import" />
                 <QuickActionLink href="/dashboard/admin/faculty" label="Faculty Directory" />
               </>
@@ -125,9 +165,20 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* ── AI Timetable Generation Modal ───────────────────────────────── */}
+      <GenerateAITimetableModal
+        isOpen={showAIModal}
+        onClose={() => setShowAIModal(false)}
+        onSuccess={handleGenerationSuccess}
+      />
     </div>
   );
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Sub-components (unchanged from original)
+// ────────────────────────────────────────────────────────────────────────────
 
 function MetricCard({ title, value, icon, subtitle }: any) {
   return (
@@ -148,9 +199,7 @@ function StatusItem({ label, status, time, icon }: any) {
   return (
     <div className="flex items-center justify-between p-4 rounded-2xl border border-blue-50 bg-white hover:border-blue-200 transition-colors">
       <div className="flex items-center gap-4">
-        <div className="p-2 bg-blue-50/50 rounded-xl">
-          {icon}
-        </div>
+        <div className="p-2 bg-blue-50/50 rounded-xl">{icon}</div>
         <span className="text-sm font-bold text-slate-700">{label}</span>
       </div>
       <div className="text-right">
@@ -163,7 +212,7 @@ function StatusItem({ label, status, time, icon }: any) {
 
 function QuickActionLink({ href, label }: any) {
   return (
-    <Link 
+    <Link
       href={href}
       className="flex items-center justify-between p-4 rounded-2xl bg-blue-50/50 hover:bg-blue-600 text-blue-900 hover:text-white transition-all duration-300 group shadow-sm"
     >

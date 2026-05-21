@@ -11,7 +11,9 @@ router.use(verifyToken);
 router.use(requireRole('ADMIN'));
 
 router.get('/template', roomController.downloadTemplate);
+router.get('/export', roomController.exportRooms);
 router.delete('/bulk', roomController.bulkDeleteRooms);
+router.post('/bulk-delete-file', upload.single('file'), roomController.bulkDeleteRoomsFromFile);
 router.post('/bulk-upload', upload.single('file'), roomController.bulkUploadRooms);
 
 router.get('/', roomController.getAllRooms);

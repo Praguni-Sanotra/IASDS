@@ -117,7 +117,7 @@ export default function FacultyPage() {
             onClick={() => setIsUploadOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-zinc-700 bg-white border border-zinc-200 hover:bg-zinc-50 dark:text-zinc-300 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 transition-colors shadow-sm"
           >
-            <UploadCloud size={16} /> Import CSV
+            <UploadCloud size={16} /> Import Excel/CSV
           </button>
           <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm">
             <Plus size={16} /> Add Faculty
@@ -170,6 +170,8 @@ export default function FacultyPage() {
         entityName="Faculty"
         templateUrl="/faculty/template"
         uploadUrl="/faculty/bulk-upload"
+        deleteUrl="/faculty/bulk-delete-file"
+        exportUrl="/faculty/export"
         onSuccess={() => { fetchFaculty(search, page, limit); setIsUploadOpen(false); }}
       />
 

@@ -3,9 +3,41 @@ import Constraint, { ConstraintType } from '../models/Constraint';
 import AuditLog from '../models/AuditLog';
 import { AuthRequest } from '../middleware/auth';
 
+const DEFAULT_CONSTRAINTS = [
+  {
+    name: 'No Overlapping Faculty',
+    type: ConstraintType.HARD,
+    category: 'FACULTY',
+    description: 'A faculty member cannot be assigned to two different classes at the same time.',
+    isEnabled: true,
+    priority: 100,
+  },
+  {
+    name: 'Room Capacity',
+    type: ConstraintType.HARD,
+    category: 'ROOM',
+    description: 'The number of students in a class must not exceed room capacity.',
+    isEnabled: true,
+    priority: 100,
+  },
+  {
+    name: 'Minimize Faculty Gaps',
+    type: ConstraintType.SOFT,
+    category: 'FACULTY',
+    description: 'Try to minimize free periods between classes for faculty on a given day.',
+    isEnabled: true,
+    priority: 50,
+  },
+];
+
 export const getAllConstraints = async (req: Request, res: Response): Promise<void> => {
   try {
-    const constraints = await Constraint.find().sort({ priority: -1 });
+    let constraints = await Constraint.find().sort({ priority: -1 });
+
+    if (constraints.length === 0) {
+      await Constraint.insertMany(DEFAULT_CONSTRAINTS);
+      constraints = await Constraint.find().sort({ priority: -1 });
+    }
     
     // Group by HARD/SOFT type
     const grouped = constraints.reduce((acc: any, constraint: any) => {
@@ -62,34 +94,7 @@ export const resetConstraints = async (req: AuthRequest, res: Response): Promise
     await Constraint.deleteMany({});
 
     // Restore from default seeds
-    const defaultConstraints = [
-      {
-        name: 'No Overlapping Faculty',
-        type: ConstraintType.HARD,
-        category: 'FACULTY',
-        description: 'A faculty member cannot be assigned to two different classes at the same time.',
-        isEnabled: true,
-        priority: 100,
-      },
-      {
-        name: 'Room Capacity',
-        type: ConstraintType.HARD,
-        category: 'ROOM',
-        description: 'The number of students in a class must not exceed room capacity.',
-        isEnabled: true,
-        priority: 100,
-      },
-      {
-        name: 'Minimize Faculty Gaps',
-        type: ConstraintType.SOFT,
-        category: 'FACULTY',
-        description: 'Try to minimize free periods between classes for faculty on a given day.',
-        isEnabled: true,
-        priority: 50,
-      },
-    ];
-
-    const inserted = await Constraint.insertMany(defaultConstraints);
+    const inserted = await Constraint.insertMany(DEFAULT_CONSTRAINTS);
 
     await AuditLog.create({
       action: 'RESET',

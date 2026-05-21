@@ -113,7 +113,7 @@ export default function RoomsPage() {
             onClick={() => setIsUploadOpen(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-blue-700 bg-white border border-blue-100 hover:bg-blue-50 transition-all shadow-sm active:scale-95"
           >
-            <UploadCloud size={16} /> Import CSV
+            <UploadCloud size={16} /> Import Excel/CSV
           </button>
           <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95">
             <Plus size={16} /> Add Room
@@ -156,6 +156,8 @@ export default function RoomsPage() {
         entityName="Rooms"
         templateUrl="/rooms/template"
         uploadUrl="/rooms/bulk-upload"
+        deleteUrl="/rooms/bulk-delete-file"
+        exportUrl="/rooms/export"
         onSuccess={() => { fetchRooms(search, page, limit); setIsUploadOpen(false); }}
       />
 

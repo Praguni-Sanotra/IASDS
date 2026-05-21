@@ -22,6 +22,7 @@ export default function SubjectsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isMappingUploadOpen, setIsMappingUploadOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -104,10 +105,16 @@ export default function SubjectsPage() {
         </div>
         <div className="flex items-center gap-3">
           <button 
+            onClick={() => setIsMappingUploadOpen(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all shadow-sm active:scale-95"
+          >
+            <UploadCloud size={16} /> Import Mappings
+          </button>
+          <button 
             onClick={() => setIsUploadOpen(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-blue-700 bg-white border border-blue-100 hover:bg-blue-50 transition-all shadow-sm active:scale-95"
           >
-            <UploadCloud size={16} /> Import CSV
+            <UploadCloud size={16} /> Import Excel/CSV
           </button>
           <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95">
             <Plus size={16} /> Add Subject
@@ -150,7 +157,18 @@ export default function SubjectsPage() {
         entityName="Subjects"
         templateUrl="/subjects/template"
         uploadUrl="/subjects/bulk-upload"
+        deleteUrl="/subjects/bulk-delete-file"
+        exportUrl="/subjects/export"
         onSuccess={() => { fetchSubjects(search, page, limit); setIsUploadOpen(false); }}
+      />
+
+      <BulkUploadModal 
+        isOpen={isMappingUploadOpen}
+        onClose={() => setIsMappingUploadOpen(false)}
+        entityName="Subject-Faculty Mapping"
+        templateUrl="/subjects/mapping-template"
+        uploadUrl="/subjects/mapping-upload"
+        onSuccess={() => { fetchSubjects(search, page, limit); setIsMappingUploadOpen(false); }}
       />
 
       <DeleteConfirmModal 

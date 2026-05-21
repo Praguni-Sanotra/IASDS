@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Download, Share2, FileText, Calendar as CalendarIcon, Printer } from 'lucide-react';
+import { Download, Share2, FileText, Calendar as CalendarIcon, Printer, Sparkles, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TimetableCalendar } from '../../../components/timetable/TimetableCalendar';
 import { FilterBar } from '../../../components/timetable/FilterBar';
 import { SlotDetailPopover } from '../../../components/timetable/SlotDetailPopover';
 import { GenerationPanel } from '../../../components/timetable/GenerationPanel';
+import GenerateAITimetableModal from '../../../components/modals/GenerateAITimetableModal';
 import { useAuthStore } from '../../../store/authStore';
 import apiClient from '../../../lib/apiClient';
+
 
 export default function TimetablePage() {
   const { user } = useAuthStore();
@@ -27,6 +29,11 @@ export default function TimetablePage() {
 
   // Selection
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
+
+  // AI Modal
+  const [showAIModal, setShowAIModal] = useState(false);
+
+
 
   const fetchTimetable = useCallback(async () => {
     setIsLoading(true);
@@ -46,12 +53,25 @@ export default function TimetablePage() {
 
   const fetchFilterOptions = useCallback(async () => {
     try {
+      if (viewAs === 'batch') {
+        // Extract unique batches directly from the timetable slots
+        if (!slots || slots.length === 0) {
+          setFilterOptions([]);
+          return;
+        }
+        const uniqueBatches = Array.from(new Set(slots.map((s: any) => s.batch || s.batchId).filter(Boolean)));
+        setFilterOptions(uniqueBatches.map(b => ({
+          id: b as string,
+          name: (b as string).replace('batch_', '').replace('_', ' Semester ')
+        })));
+        return;
+      }
+
       let endpoint = '/faculty';
-      if (viewAs === 'batch') endpoint = '/faculty'; // Need a batch endpoint, using faculty as placeholder
       if (viewAs === 'room') endpoint = '/rooms';
       
       const res = await apiClient.get(endpoint);
-      const data = res.data.data || [];
+      const data = res.data.data || res.data || [];
       setFilterOptions(data.map((item: any) => ({
         id: item._id,
         name: item.name || item.roomNumber || item.code
@@ -59,7 +79,7 @@ export default function TimetablePage() {
     } catch (error) {
       console.error('Filter load error', error);
     }
-  }, [viewAs]);
+  }, [viewAs, slots]);
 
   useEffect(() => {
     fetchTimetable();
@@ -69,41 +89,97 @@ export default function TimetablePage() {
     fetchFilterOptions();
   }, [fetchFilterOptions]);
 
-  const handleExport = (format: string) => {
-    toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 1500)),
-      {
-        loading: `Preparing ${format.toUpperCase()} export...`,
-        success: 'Export downloaded successfully!',
-        error: 'Export failed'
-      }
-    );
+  const handleExport = async (format: string) => {
+    if (!timetable?._id) {
+      toast.error('No timetable to export');
+      return;
+    }
+    const toastId = toast.loading(`Preparing ${format.toUpperCase()} export...`);
+    try {
+      const res = await apiClient.get('/export/timetable', {
+        responseType: 'blob',
+        params: {
+          format,
+          batch: viewAs === 'batch' ? selectedId : undefined,
+          facultyId: viewAs === 'faculty' ? selectedId : undefined,
+          roomId: viewAs === 'room' ? selectedId : undefined,
+        },
+      });
+      const ext = format === 'excel' ? 'xlsx' : format === 'ics' ? 'ics' : 'pdf';
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `timetable.${ext}`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Export downloaded', { id: toastId });
+    } catch {
+      toast.error('Export failed', { id: toastId });
+    }
   };
 
   const handleEventDrop = async (info: any) => {
     const { event, oldEvent, revert } = info;
-    const day = event.start.getDay() - 1; // 0 = Mon
-    const period = event.start.getHours() - 8;
-
-    const toastId = toast.loading('Checking conflicts...');
-
-    try {
-      await apiClient.post('/schedule/reschedule', {
-        timetableId: timetable._id,
-        triggerType: 'MANUAL_MOVE',
-        affectedEntityId: event.extendedProps.facultyId,
-        affectedDay: oldEvent.start.getDay() - 1,
-        affectedPeriods: [oldEvent.start.getHours() - 8],
-        targetDay: day,
-        targetPeriod: period
-      });
-      toast.success('Slot moved successfully', { id: toastId });
-      fetchTimetable(); // Refresh data
-    } catch (error: any) {
+    
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const day = days[event.start.getDay()] || 'MON';
+    const hour = event.start.getHours();
+    
+    let period = 0;
+    if (hour === 9) period = 0;
+    else if (hour === 10) period = 1;
+    else if (hour === 11) period = 2;
+    else if (hour === 12) period = 3;
+    else if (hour === 14) period = 4;
+    else if (hour === 15) period = 5;
+    
+    const slotId = event.extendedProps._id;
+    if (!slotId) {
+      toast.error('Could not find slot ID');
       revert();
-      const message = error.response?.data?.message || 'Conflict detected';
-      toast.error(message, { id: toastId });
+      return;
     }
+
+    const toastId = toast.loading('Updating slot position...');
+
+    const saveMove = async (forceUpdate = false) => {
+      try {
+        await apiClient.put(`/admin/timetable/${timetable._id}/slots/${slotId}`, {
+          day,
+          period,
+          force: forceUpdate
+        });
+        toast.success(forceUpdate ? 'Slot moved (forced override)' : 'Slot moved successfully', { id: toastId });
+        fetchTimetable();
+      } catch (error: any) {
+        if (error.response?.status === 409) {
+          const conflicts = error.response.data?.conflicts || [];
+          toast.error(
+            <div className="flex flex-col gap-1.5 p-1">
+              <span className="font-bold text-red-800">Scheduling Conflict:</span>
+              <ul className="text-xs list-disc pl-4 text-red-700 space-y-0.5">
+                {conflicts.map((c: string, idx: number) => <li key={idx}>{c}</li>)}
+              </ul>
+              <button 
+                onClick={() => {
+                  toast.dismiss(toastId);
+                  saveMove(true);
+                }} 
+                className="mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold w-fit active:scale-95 transition-all shadow-md shadow-red-600/10"
+              >
+                Force Move Anyway
+              </button>
+            </div>,
+            { id: toastId, duration: 10000 }
+          );
+        } else {
+          toast.error(error.response?.data?.message || 'Failed to move slot', { id: toastId });
+        }
+        revert();
+      }
+    };
+
+    saveMove(false);
   };
 
   // Filter slots for the calendar
@@ -116,11 +192,11 @@ export default function TimetablePage() {
         return slot.batch === selectedId || slot.batchId === selectedId;
       }
       if (viewAs === 'faculty') {
-        const fId = typeof slot.facultyId === 'string' ? slot.facultyId : slot.facultyId?._id;
+        const fId = typeof slot.facultyId === 'string' ? slot.facultyId : slot.facultyId?._id?.toString();
         return fId === selectedId;
       }
       if (viewAs === 'room') {
-        const rId = typeof slot.roomId === 'string' ? slot.roomId : slot.roomId?._id;
+        const rId = typeof slot.roomId === 'string' ? slot.roomId : slot.roomId?._id?.toString();
         return rId === selectedId;
       }
       return true;
@@ -144,36 +220,69 @@ export default function TimetablePage() {
           <p className="text-sm font-medium text-slate-500">View and manage academic schedules across departments.</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Export tools */}
           <div className="hidden sm:flex items-center bg-blue-50 p-1 rounded-xl border border-blue-100">
-            <button 
+            <button
               onClick={() => handleExport('pdf')}
               className="p-2 hover:bg-white rounded-lg text-blue-600 transition-all"
               title="Export PDF"
             >
               <FileText size={18} />
             </button>
-            <button 
+            <button
               onClick={() => handleExport('excel')}
               className="p-2 hover:bg-white rounded-lg text-blue-600 transition-all"
               title="Export Excel"
             >
               <Share2 size={18} />
             </button>
-            <button 
+            <button
               className="p-2 hover:bg-white rounded-lg text-blue-600 transition-all"
               title="Print"
             >
               <Printer size={18} />
             </button>
           </div>
-          
-          <button 
+
+          {/* Add to Calendar */}
+          <button
             onClick={() => handleExport('ics')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-black rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-black rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all active:scale-95"
           >
             <CalendarIcon size={16} /> Add to Calendar
           </button>
+
+          {/* Generate AI Timetable — Admin only */}
+          {isAdmin && (
+            <button
+              id="timetable-page-generate-btn"
+              onClick={() => setShowAIModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm font-black rounded-xl hover:from-indigo-700 hover:to-blue-700 shadow-lg shadow-indigo-500/25 transition-all active:scale-95"
+            >
+              <Sparkles size={16} className="text-yellow-300" />
+              Generate AI Timetable
+            </button>
+          )}
+
+          {/* Add Slot — Admin only */}
+          {isAdmin && timetable && (
+            <button
+              onClick={() => setSelectedSlot({
+                isNew: true,
+                day: 'MON',
+                period: 0,
+                subjectId: '',
+                facultyId: '',
+                roomId: '',
+                batch: viewAs === 'batch' ? selectedId : '',
+                section: 'A'
+              })}
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
+            >
+              <Plus size={16} /> Add Class Slot
+            </button>
+          )}
         </div>
       </div>
 
@@ -196,6 +305,13 @@ export default function TimetablePage() {
           </div>
         ) : slots.length > 0 ? (
           <div className="flex flex-col gap-4">
+            {isAdmin && timetable && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900 flex flex-wrap items-center gap-2">
+                <span className="font-bold">Manual edit mode:</span>
+                Click any class to edit, drag slots to move, or use <strong>Add Class Slot</strong>.
+                Conflicts can be overridden with Force Move.
+              </div>
+            )}
             {!selectedId && (
               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl text-blue-600 dark:text-blue-400 text-sm font-medium flex items-center gap-2">
                 <CalendarIcon size={18} />
@@ -211,14 +327,23 @@ export default function TimetablePage() {
           </div>
         ) : (
           <div className="w-full h-[600px] border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center text-center p-12">
-            <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
-              <CalendarIcon size={32} className="text-zinc-400" />
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-5">
+              <CalendarIcon size={32} className="text-blue-400" />
             </div>
             <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">No Published Timetable</h3>
-            <p className="text-zinc-500 max-w-xs mt-2">
+            <p className="text-zinc-500 max-w-xs mt-2 mb-6">
               The academic schedule for the current semester hasn't been published yet.
-              {isAdmin && " Use the AI Scheduler panel to generate one."}
             </p>
+            {isAdmin && (
+              <button
+                id="empty-state-generate-btn"
+                onClick={() => setShowAIModal(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-black rounded-2xl hover:from-blue-700 hover:to-indigo-700 shadow-xl shadow-blue-500/30 transition-all active:scale-95"
+              >
+                <Sparkles size={16} className="text-yellow-300" />
+                Generate AI Timetable
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -226,15 +351,25 @@ export default function TimetablePage() {
       {/* Overlays */}
       <SlotDetailPopover 
         slot={selectedSlot}
+        timetableId={timetable?._id}
         onClose={() => setSelectedSlot(null)}
+        onSuccess={fetchTimetable}
         isAdmin={isAdmin}
       />
 
+      {/* Legacy slide-out panel */}
       {isAdmin && (
-        <GenerationPanel 
+        <GenerationPanel
           onScheduleReady={fetchTimetable}
         />
       )}
+
+      {/* AI Timetable Modal */}
+      <GenerateAITimetableModal
+        isOpen={showAIModal}
+        onClose={() => setShowAIModal(false)}
+        onSuccess={fetchTimetable}
+      />
 
     </div>
   );

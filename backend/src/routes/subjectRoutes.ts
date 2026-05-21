@@ -12,8 +12,12 @@ router.use(verifyToken);
 router.use(requireRole('ADMIN'));
 
 router.get('/template', subjectController.downloadTemplate);
+router.get('/mapping-template', subjectController.downloadMappingTemplate);
+router.get('/export', subjectController.exportSubjects);
 router.delete('/bulk', subjectController.bulkDeleteSubjects);
+router.post('/bulk-delete-file', upload.single('file'), subjectController.bulkDeleteSubjectsFromFile);
 router.post('/bulk-upload', upload.single('file'), subjectController.bulkUploadSubjects);
+router.post('/mapping-upload', upload.single('file'), subjectController.bulkUploadMappings);
 
 router.get('/', subjectController.getAllSubjects);
 router.get('/:id', subjectController.getSubjectById);

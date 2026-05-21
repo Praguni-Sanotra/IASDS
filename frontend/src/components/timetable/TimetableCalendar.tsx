@@ -34,17 +34,21 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
     const date = new Date(today);
     date.setDate(diff);
     
-    return date.toISOString().split('T')[0];
+    // Adjust for timezone offset to ensure local date isn't shifted by UTC
+    const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+    const localDate = new Date(date.getTime() - offsetMs);
+    
+    return localDate.toISOString().split('T')[0];
   };
 
   // Transform internal slots to FullCalendar events
   const events = slots.map((slot, index) => {
     const dayMap: Record<string, number> = {
-      'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6
+      'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5
     };
     
-    const day = dayMap[slot.day] || 1;
-    const date = `2024-05-${12 + day}`; // Fixed week for rendering
+    // Map to the current week's dates so they show up on the default calendar view
+    const date = getDateForDay(slot.day);
 
     // Static Grid Mapping:
     // Period 1 -> 09:00
@@ -62,6 +66,9 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
     // Period 6 -> 15:00:00
     
     const pNum = Number(slot.period);
+    // Python backend stores periods as 0-5. Map them to 1-6 for the times dict.
+    const normalizedPeriod = pNum < 6 ? pNum + 1 : pNum;
+    
     const times: Record<number, {s: string, e: string}> = {
       1: { s: "09:00:00", e: "10:00:00" },
       2: { s: "10:00:00", e: "11:00:00" },
@@ -71,19 +78,22 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
       6: { s: "15:00:00", e: "16:00:00" },
     };
 
-    const { s: startTime, e: endTime } = times[pNum] || times[1];
+    const { s: startTime, e: endTime } = times[normalizedPeriod] || times[1];
 
     const subjectCode = slot.subjectId?.code || slot.subjectCode || 'SUB';
     const facultyName = slot.facultyId?.name || slot.facultyName || 'Faculty';
 
+    const slotId = slot._id?.toString?.() || slot._id || `slot-${index}`;
+
     return {
-      id: `slot-${index}`,
+      id: slotId,
       title: subjectCode,
       start: `${date}T${startTime}`,
       end: `${date}T${endTime}`,
       allDay: false,
       extendedProps: {
         ...slot,
+        _id: slotId,
         subjectCode,
         facultyName,
         facultyInitials: facultyName.split(' ').map((n: string) => n[0]).join('') || '??',
@@ -119,6 +129,7 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
         ]}
         editable={isAdmin}
         eventClick={(info) => onSlotClick(info.event.extendedProps)}
+        eventDrop={onEventDrop}
         eventContent={(eventInfo) => {
           if (eventInfo.event.display === 'background') return null;
           return <EventCard event={eventInfo.event} />;

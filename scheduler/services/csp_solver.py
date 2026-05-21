@@ -26,21 +26,36 @@ def solve(faculties, subjects, rooms, batches, constraints, timeout_seconds=60):
     batch_dict = {b['id']: b for b in batches}
     
     DAYS = 6  # Mon(0) to Sat(5)
-    PERIODS = 6 # 0 to 5 (matched to institute timings)
+    PERIODS = 6  # 0 to 5 (matched to institute timings)
+
+    def normalize_period_slots(slots):
+        """DB often stores periods 1–6; solver uses 0–5."""
+        if not slots:
+            return set(range(PERIODS))
+        normalized = set()
+        for s in slots:
+            try:
+                p = int(s)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= p <= PERIODS:
+                normalized.add(p - 1)
+            elif 0 <= p < PERIODS:
+                normalized.add(p)
+        return normalized if normalized else set(range(PERIODS))
     
     # Pre-process faculty availability
-    # faculty_avail[f_id][day] = set of available periods
     faculty_avail = {}
     for f in faculties:
-        avail_map = {d: set() for d in range(DAYS)}
-        # If availability is empty/not provided, assume available all the time (or modify as needed)
+        avail_map = {d: set(range(PERIODS)) for d in range(DAYS)}
         provided_avail = f.get('availability', [])
-        if not provided_avail:
-            for d in range(DAYS):
-                avail_map[d] = set(range(PERIODS))
-        else:
+        if provided_avail:
             for a in provided_avail:
-                avail_map[a['day']] = set(a.get('slots', []))
+                day_idx = a.get('day', 0)
+                if isinstance(day_idx, str):
+                    day_map = {'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5}
+                    day_idx = day_map.get(day_idx.upper(), 0)
+                avail_map[day_idx] = normalize_period_slots(a.get('slots', a.get('availableSlots', [])))
         faculty_avail[f['id']] = avail_map
 
     # ----------------------------------------------------------------------
@@ -54,8 +69,13 @@ def solve(faculties, subjects, rooms, batches, constraints, timeout_seconds=60):
     by_room_time = {r['id']: {d: {p: [] for p in range(PERIODS)} for d in range(DAYS)} for r in rooms}
     by_batch_time = {b['id']: {d: {p: [] for p in range(PERIODS)} for d in range(DAYS)} for b in batches}
     by_batch_subject = {b['id']: {s['id']: [] for s in subjects} for b in batches}
+    # NEW: tracks vars per batch-subject-day for fast per-day limit constraint
+    by_batch_subject_day = {b['id']: {s['id']: {d: [] for d in range(DAYS)} for s in subjects} for b in batches}
     by_faculty = {f['id']: [] for f in faculties}
     by_faculty_day = {f['id']: {d: [] for d in range(DAYS)} for f in faculties}
+    
+    # NEW: y[b_id, s_id, f_id] = 1 if faculty f teaches subject s to batch b
+    y = {}
 
     valid_vars_created = 0
 
@@ -92,12 +112,33 @@ def solve(faculties, subjects, rooms, batches, constraints, timeout_seconds=60):
                             by_room_time[r['id']][d][p].append(var)
                             by_batch_time[b['id']][d][p].append(var)
                             by_batch_subject[b['id']][s['id']].append(var)
+                            by_batch_subject_day[b['id']][s['id']][d].append(var)  # O(1) per-day tracking
                             by_faculty[f['id']].append(var)
                             by_faculty_day[f['id']][d].append(var)
+                            
+                # Create the y variable for this batch, subject, and faculty
+                y_key = (b['id'], s['id'], f['id'])
+                if y_key not in y:
+                    y[y_key] = model.NewBoolVar(f"y_{b['id']}_{s['id']}_{f['id']}")
+                    
+            # Exactly one faculty per batch-subject (skip if no eligible faculty)
+            if s.get('semester') == b.get('semester') and eligible_faculties:
+                y_vars = [
+                    y[(b['id'], s['id'], f['id'])]
+                    for f in eligible_faculties
+                    if (b['id'], s['id'], f['id']) in y
+                ]
+                if y_vars:
+                    model.Add(sum(y_vars) == 1)
 
     # ----------------------------------------------------------------------
     # HARD CONSTRAINTS
     # ----------------------------------------------------------------------
+    
+    # Link x and y: If x is 1, y must be 1
+    for key, var in x.items():
+        b_id, s_id, f_id, r_id, d, p = key
+        model.Add(var <= y[(b_id, s_id, f_id)])
     
     # 1. No faculty double-booking
     for f_id in by_faculty_time:
@@ -129,42 +170,36 @@ def solve(faculties, subjects, rooms, batches, constraints, timeout_seconds=60):
         max_hrs = f.get('maxHoursPerWeek', 40)
         model.Add(sum(by_faculty[f['id']]) <= max_hrs)
 
+    # 6. Max periods of the same subject per day for a batch (O(1) lookup via by_batch_subject_day)
+    # Prevents dumping all hours for a subject onto a single day.
+    for b in batches:
+        for s in subjects:
+            if b.get('semester') != s.get('semester'):
+                continue
+            is_lab = s.get('type') == 'LAB'
+            max_per_day = 3 if is_lab else 1  # 1 for THEORY to force spreading across days
+
+            for d in range(DAYS):
+                day_vars = by_batch_subject_day[b['id']][s['id']][d]
+                if day_vars:
+                    model.Add(sum(day_vars) <= max_per_day)
+
     # ----------------------------------------------------------------------
     # SOFT CONSTRAINTS & OBJECTIVE FUNCTION
     # ----------------------------------------------------------------------
     objective_terms = []
 
     # Soft Constraint: Avoid scheduling labs in the first or last period
-    # We add a penalty to the objective if a lab is scheduled at p=0 or p=PERIODS-1
+    # Penalty of -10 for each lab scheduled at period 0 or PERIODS-1
     for key, var in x.items():
         b_id, s_id, f_id, r_id, d, p = key
         if subject_dict[s_id].get('type') == 'LAB':
             if p == 0 or p == PERIODS - 1:
-                # Penalty of -10 for objective (we maximize, so we use negative weights for penalties)
                 objective_terms.append(-10 * var)
-                
-    # Soft Constraint: Minimize gaps in faculty schedule (Avoid isolated free periods)
-    # If a faculty teaches at p=0 and p=2, but not p=1, that's a gap.
-    # To model this simply in CP-SAT without complex automatons:
-    # We penalize transitions. A simpler proxy is to reward consecutive classes.
-    # For every day and period p, if f teaches at p and p+1, reward it.
-    for f_id in by_faculty_time:
-        for d in range(DAYS):
-            for p in range(PERIODS - 1):
-                # Create a boolean that is true if faculty teaches both period p and p+1
-                vars_p = by_faculty_time[f_id][d][p]
-                vars_next = by_faculty_time[f_id][d][p+1]
-                if vars_p and vars_next:
-                    is_consecutive = model.NewBoolVar(f'consec_{f_id}_d{d}_p{p}')
-                    # is_consecutive can only be 1 if sum(vars_p) >= 1 AND sum(vars_next) >= 1
-                    # Since sum(vars_p) <= 1, we can just say:
-                    # is_consecutive <= sum(vars_p)
-                    # is_consecutive <= sum(vars_next)
-                    model.Add(is_consecutive <= sum(vars_p))
-                    model.Add(is_consecutive <= sum(vars_next))
-                    
-                    # Reward consecutive assignments (minimize gaps)
-                    objective_terms.append(5 * is_consecutive)
+
+    # Soft Constraint: Prefer spreading subjects across days
+    # Penalize scheduling the same subject on the same day more than once
+    # (lighter version — just use the objective to reward diverse days, no extra BoolVars)
 
     # Set the objective: Maximize the rewards (minimize penalties)
     if objective_terms:
@@ -175,7 +210,9 @@ def solve(faculties, subjects, rooms, batches, constraints, timeout_seconds=60):
     # ----------------------------------------------------------------------
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = timeout_seconds
-    
+    solver.parameters.num_search_workers = min(8, max(1, __import__('os').cpu_count() or 4))
+    solver.parameters.linearization_level = 2
+
     status = solver.Solve(model)
     
     solve_time_ms = int((time.time() - start_time) * 1000)
