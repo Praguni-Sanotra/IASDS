@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useAuthStore } from '../../store/authStore';
+// import { useAuthStore } from '../../store/authStore'; // AUTH DISABLED
 import apiClient from '../../lib/apiClient';
 import {
   Users, BookOpen, DoorOpen, Calendar,
@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import GenerateAITimetableModal from '../../components/modals/GenerateAITimetableModal';
 
 export default function DashboardPage() {
-  const { user } = useAuthStore();
+  // const { user } = useAuthStore(); // AUTH DISABLED
   const router = useRouter();
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +37,10 @@ export default function DashboardPage() {
     router.push('/dashboard/timetable');
   };
 
-  if (!user) return null;
+  // Mock user for display when auth is disabled
+  const user = { name: 'Admin User', role: 'ADMIN' };
+
+  // if (!user) return null; // AUTH DISABLED
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">

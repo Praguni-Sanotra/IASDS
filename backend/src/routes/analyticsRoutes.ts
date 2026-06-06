@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import * as analyticsController from '../controllers/analyticsController';
-import { verifyToken } from '../middleware/auth';
+// import { verifyToken } from '../middleware/auth'; // AUTH DISABLED
 
 const router = Router();
 
-router.use(verifyToken);
+// router.use(verifyToken); // AUTH DISABLED
 
 router.get('/workload', analyticsController.getWorkload);
 router.get('/room-utilization', analyticsController.getRoomUtilization);

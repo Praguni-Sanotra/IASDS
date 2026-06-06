@@ -1,3 +1,5 @@
+// AUTH SYSTEM DISABLED - To restore, uncomment all code below
+/*
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import redisClient from '../config/redis';
@@ -57,6 +59,30 @@ export const requireRole = (...roles: string[]) => {
       return;
     }
 
+    next();
+  };
+};
+*/
+
+// Placeholder exports to prevent import errors
+import { Request, Response, NextFunction } from 'express';
+
+export interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    department?: string;
+  };
+}
+
+export const verifyToken = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  next();
+};
+
+export const requireRole = (...roles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
     next();
   };
 };

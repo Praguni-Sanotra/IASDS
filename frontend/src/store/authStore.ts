@@ -1,3 +1,5 @@
+// AUTH SYSTEM DISABLED - To restore, uncomment all code below
+/*
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -32,7 +34,7 @@ export const useAuthStore = create<AuthState>()(
         set({ user, accessToken, isAuthenticated: true, isLoading: false }),
 
       logout: () =>
-        set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false }),
+        set({ user, null, accessToken: null, isAuthenticated: false, isLoading: false }),
 
       setAccessToken: (accessToken) =>
         set({ accessToken, isAuthenticated: !!accessToken }),
@@ -46,3 +48,44 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+*/
+
+import { create } from 'zustand';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'FACULTY' | 'STUDENT';
+  department?: string;
+}
+
+interface AuthState {
+  user: User | null;
+  accessToken: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (user: User, accessToken: string) => void;
+  logout: () => void;
+  setAccessToken: (token: string) => void;
+  setLoading: (loading: boolean) => void;
+}
+
+// Mock auth store that always returns authenticated when auth is disabled
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'ADMIN' },
+  accessToken: 'mock-token',
+  isAuthenticated: true,
+  isLoading: false,
+
+  login: (user, accessToken) =>
+    set({ user, accessToken, isAuthenticated: true, isLoading: false }),
+
+  logout: () =>
+    set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false }),
+
+  setAccessToken: (accessToken) =>
+    set({ accessToken, isAuthenticated: !!accessToken }),
+
+  setLoading: (isLoading) => set({ isLoading }),
+}));

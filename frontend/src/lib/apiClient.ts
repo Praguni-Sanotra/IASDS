@@ -1,3 +1,5 @@
+// AUTH SYSTEM DISABLED - To restore, uncomment all code below
+/*
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
@@ -67,5 +69,20 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export default apiClient;
+*/
+
+import axios from 'axios';
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api';
+
+const apiClient = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 export default apiClient;

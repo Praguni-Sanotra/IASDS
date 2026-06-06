@@ -1,3 +1,5 @@
+// AUTH SYSTEM DISABLED - To restore, uncomment all code below
+/*
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -215,3 +217,4 @@ export const me = async (req: AuthRequest, res: Response): Promise<void> => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+*/

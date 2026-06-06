@@ -1,3 +1,5 @@
+// AUTH SYSTEM DISABLED - To restore, uncomment all code below
+/*
 "use client";
 
 import { useState } from 'react';
@@ -177,6 +179,25 @@ export default function LoginPage() {
             ? "Don't have an account? Sign Up" 
             : "Already have an account? Sign In"}
         </button>
+      </div>
+    </div>
+  );
+}
+*/
+
+export default function LoginPage() {
+  return (
+    <div className="w-full max-w-md bg-white dark:bg-zinc-900 shadow-xl rounded-2xl p-8 border border-zinc-200 dark:border-zinc-800 transition-all duration-300">
+      <div className="flex flex-col items-center mb-8">
+        <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-blue-600/20">
+          <span className="text-white text-3xl font-bold">M</span>
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          Authentication Disabled
+        </h1>
+        <p className="text-sm text-zinc-500 mt-2 text-center">
+          The authentication system has been disabled. To restore it, uncomment the code in this file.
+        </p>
       </div>
     </div>
   );

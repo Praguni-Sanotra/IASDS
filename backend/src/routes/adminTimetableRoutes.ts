@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { verifyToken, requireRole } from '../middleware/auth';
+// import { verifyToken, requireRole } from '../middleware/auth'; // AUTH DISABLED
 import {
   generateAITimetable,
   getTimetableHistory,
@@ -12,7 +12,7 @@ import {
 const router = Router();
 
 // All routes require ADMIN role
-router.use(verifyToken, requireRole('ADMIN'));
+// router.use(verifyToken, requireRole('ADMIN')); // AUTH DISABLED
 
 /**
  * POST /api/admin/generate-timetable

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import multer from 'multer';
 import * as facultyController from '../controllers/facultyController';
-import { verifyToken, requireRole } from '../middleware/auth';
+// import { verifyToken, requireRole } from '../middleware/auth'; // AUTH DISABLED
 
 const router = Router();
 
@@ -13,8 +13,8 @@ const upload = multer({
 });
 
 // Protect all routes
-router.use(verifyToken);
-router.use(requireRole('ADMIN'));
+// router.use(verifyToken); // AUTH DISABLED
+// router.use(requireRole('ADMIN')); // AUTH DISABLED
 
 // Download Template / Export
 router.get('/template', facultyController.downloadTemplate);
