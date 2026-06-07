@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Download, Share2, FileText, Calendar as CalendarIcon, Printer, Sparkles, Plus } from 'lucide-react';
+import { Download, Share2, FileText, Calendar as CalendarIcon, Printer, Sparkles, Plus, PenLine, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TimetableCalendar } from '../../../components/timetable/TimetableCalendar';
@@ -22,6 +22,12 @@ export default function TimetablePage() {
   const [timetable, setTimetable] = useState<any>(null);
   const [slots, setSlots] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [timetableDept, setTimetableDept] = useState(() =>
+    typeof window !== 'undefined' ? sessionStorage.getItem('iasds_timetable_dept') || '' : ''
+  );
+  const [timetableSemester, setTimetableSemester] = useState(() =>
+    typeof window !== 'undefined' ? sessionStorage.getItem('iasds_timetable_semester') || '' : ''
+  );
   
   // Filter States
   const [viewAs, setViewAs] = useState('batch');
@@ -37,17 +43,27 @@ export default function TimetablePage() {
 
 
 
-  const fetchTimetable = useCallback(async () => {
+  const fetchTimetable = useCallback(async (dept?: string, semester?: string) => {
     setIsLoading(true);
     try {
-      // For now fetching latest published
-      const res = await apiClient.get('/schedule/latest');
+      const storedDept = dept || sessionStorage.getItem('iasds_timetable_dept') || '';
+      const storedSem = semester || sessionStorage.getItem('iasds_timetable_semester') || '';
+
+      const params: Record<string, string> = {};
+      if (storedDept) params.department = storedDept;
+      if (storedSem) params.semesterId = storedSem;
+
+      const res = await apiClient.get('/schedule/latest', { params });
       setTimetable(res.data);
       setSlots(res.data.slots || []);
+      if (res.data.department) setTimetableDept(res.data.department);
+      if (res.data.semesterId) setTimetableSemester(res.data.semesterId);
     } catch (error: any) {
       if (error.response?.status !== 404) {
         toast.error('Failed to load timetable');
       }
+      setTimetable(null);
+      setSlots([]);
     } finally {
       setIsLoading(false);
     }
@@ -56,32 +72,77 @@ export default function TimetablePage() {
   const fetchFilterOptions = useCallback(async () => {
     try {
       if (viewAs === 'batch') {
-        // Extract unique batches directly from the timetable slots
         if (!slots || slots.length === 0) {
           setFilterOptions([]);
           return;
         }
         const uniqueBatches = Array.from(new Set(slots.map((s: any) => s.batch || s.batchId).filter(Boolean)));
-        setFilterOptions(uniqueBatches.map(b => ({
-          id: b as string,
-          name: (b as string).replace('batch_', '').replace('_', ' Semester ')
-        })));
+        setFilterOptions(uniqueBatches.map(b => {
+          const label = (b as string)
+            .replace(/^batch_/, '')
+            .replace(/_(\d+)_([AB])$/, ' Sem $1 Section $2')
+            .replace(/_(\d+)$/, ' Semester $1')
+            .replace(/_/g, ' ');
+          return { id: b as string, name: label };
+        }));
         return;
       }
 
-      let endpoint = '/faculty';
-      if (viewAs === 'room') endpoint = '/rooms';
-      
-      const res = await apiClient.get(endpoint);
-      const data = res.data.data || res.data || [];
-      setFilterOptions(data.map((item: any) => ({
-        id: item._id,
-        name: item.name || item.roomNumber || item.code
-      })));
+      if (viewAs === 'faculty') {
+        const res = await apiClient.get('/faculty', { params: { limit: 1000 } });
+        const allFaculty = res.data.data || res.data || [];
+        const nameById = new Map<string, string>();
+        allFaculty.forEach((fac: any) => {
+          nameById.set(String(fac._id), fac.name || fac.email || 'Unknown');
+        });
+
+        slots.forEach((slot: any) => {
+          const fac = slot.facultyId;
+          const id = typeof fac === 'string' ? fac : fac?._id?.toString();
+          if (id && !nameById.has(id)) {
+            nameById.set(id, slot.facultyName || fac?.name || 'Unknown Faculty');
+          }
+        });
+
+        let options = Array.from(nameById.entries()).map(([id, name]) => ({ id, name }));
+
+        if (!showEmpty) {
+          const idsInTimetable = new Set(
+            slots.map((s: any) => String(s.facultyId?._id || s.facultyId || '')).filter(Boolean)
+          );
+          options = options.filter((o) => idsInTimetable.has(o.id));
+        }
+
+        setFilterOptions(options.sort((a, b) => a.name.localeCompare(b.name)));
+        return;
+      }
+
+      if (viewAs === 'department') {
+        const depts = new Set<string>();
+        if (timetable?.department) depts.add(timetable.department);
+        slots.forEach((slot: any) => {
+          const dept = slot.subjectId?.department;
+          if (dept) depts.add(dept);
+        });
+        setFilterOptions(
+          Array.from(depts).map(d => ({ id: d, name: d }))
+        );
+        return;
+      }
+
+      if (viewAs === 'room') {
+        const res = await apiClient.get('/rooms', { params: { limit: 1000 } });
+        const data = res.data.data || res.data || [];
+        setFilterOptions(data.map((item: any) => ({
+          id: item._id,
+          name: `${item.roomNumber} — ${item.building}`
+        })));
+        return;
+      }
     } catch (error) {
       console.error('Filter load error', error);
     }
-  }, [viewAs, slots]);
+  }, [viewAs, slots, showEmpty, timetable?.department]);
 
   useEffect(() => {
     fetchTimetable();
@@ -90,6 +151,10 @@ export default function TimetablePage() {
   useEffect(() => {
     fetchFilterOptions();
   }, [fetchFilterOptions]);
+
+  useEffect(() => {
+    setSelectedId('');
+  }, [viewAs]);
 
   const handleExport = async (format: string) => {
     if (!timetable?._id) {
@@ -135,8 +200,9 @@ export default function TimetablePage() {
     else if (hour === 14) period = 4;
     else if (hour === 15) period = 5;
     
-    const slotId = event.extendedProps._id;
-    if (!slotId) {
+    const props = event.extendedProps;
+    const slotId = props._id?.toString?.() || String(props._id || '');
+    if (!slotId || slotId.startsWith('slot-')) {
       toast.error('Could not find slot ID');
       revert();
       return;
@@ -149,6 +215,8 @@ export default function TimetablePage() {
         await apiClient.put(`/admin/timetable/${timetable._id}/slots/${slotId}`, {
           day,
           period,
+          batch: props.batch,
+          section: props.section,
           force: forceUpdate
         });
         toast.success(forceUpdate ? 'Slot moved (forced override)' : 'Slot moved successfully', { id: toastId });
@@ -190,27 +258,95 @@ export default function TimetablePage() {
     
     return slots.filter(slot => {
       if (viewAs === 'batch') {
-        // Slot batch might be an ID or string
         return slot.batch === selectedId || slot.batchId === selectedId;
       }
       if (viewAs === 'faculty') {
-        const fId = typeof slot.facultyId === 'string' ? slot.facultyId : slot.facultyId?._id?.toString();
+        const fId = typeof slot.facultyId === 'string'
+          ? slot.facultyId
+          : slot.facultyId?._id?.toString();
         return fId === selectedId;
       }
       if (viewAs === 'room') {
-        const rId = typeof slot.roomId === 'string' ? slot.roomId : slot.roomId?._id?.toString();
+        const rId = typeof slot.roomId === 'string'
+          ? slot.roomId
+          : slot.roomId?._id?.toString();
         return rId === selectedId;
+      }
+      if (viewAs === 'department') {
+        const dept = slot.subjectId?.department || timetable?.department;
+        return dept?.toUpperCase() === selectedId.toUpperCase();
       }
       return true;
     });
-  }, [slots, viewAs, selectedId]);
+  }, [slots, viewAs, selectedId, timetable?.department]);
 
-  // Auto-select first option if none selected
+  // Auto-select first option when none selected or current selection is invalid
   useEffect(() => {
-    if (filterOptions.length > 0 && !selectedId) {
-      setSelectedId(filterOptions[0].id);
+    if (filterOptions.length > 0) {
+      const stillValid = filterOptions.some((o) => o.id === selectedId);
+      if (!selectedId || !stillValid) {
+        setSelectedId(filterOptions[0].id);
+      }
     }
   }, [filterOptions, selectedId]);
+
+  const handleLoadTimetable = (dept: string, sem: string) => {
+    if (dept) sessionStorage.setItem('iasds_timetable_dept', dept);
+    if (sem) sessionStorage.setItem('iasds_timetable_semester', sem);
+    setTimetableDept(dept);
+    setTimetableSemester(sem);
+    setSelectedId('');
+    fetchTimetable(dept, sem);
+  };
+
+  const DEPT_OPTIONS = ['CSE', 'ECE', 'MECH', 'CIVIL', 'EEE', 'IT', 'AIDS', 'AIML'];
+
+  const openManualAddClass = () => {
+    if (!timetable) {
+      toast.error('Load or generate a timetable first');
+      return;
+    }
+    setSelectedSlot({
+      isNew: true,
+      isManualAdd: true,
+      day: 'MON',
+      period: 0,
+      subjectId: '',
+      facultyId: '',
+      roomId: '',
+      batch: viewAs === 'batch' && selectedId ? selectedId : `batch_${timetableDept || 'CSE'}_${timetableSemester || '1'}`,
+      section: 'A',
+    });
+  };
+
+  const creditCompliance = React.useMemo(() => {
+    const byBatch: Record<string, Record<string, { required: number; scheduled: number; name: string }>> = {};
+
+    slots.forEach((slot: any) => {
+      const batch = slot.batch || 'default';
+      const sub = slot.subjectId;
+      if (!sub?.code) return;
+
+      const code = sub.code;
+      const required = sub.hoursPerWeek || sub.credits || 0;
+      if (!byBatch[batch]) byBatch[batch] = {};
+      if (!byBatch[batch][code]) {
+        byBatch[batch][code] = { required, scheduled: 0, name: sub.name || code };
+      }
+      byBatch[batch][code].scheduled += 1;
+    });
+
+    const issues: { batch: string; code: string; name: string; required: number; scheduled: number }[] = [];
+    Object.entries(byBatch).forEach(([batch, subjects]) => {
+      Object.entries(subjects).forEach(([code, info]) => {
+        if (info.required > 0 && info.scheduled !== info.required) {
+          issues.push({ batch, code, name: info.name, required: info.required, scheduled: info.scheduled });
+        }
+      });
+    });
+
+    return issues;
+  }, [slots]);
 
   return (
     <div className="relative min-h-screen flex flex-col gap-6 animate-in fade-in duration-700">
@@ -219,7 +355,12 @@ export default function TimetablePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-blue-900">Timetable Explorer</h1>
-          <p className="text-sm font-medium text-slate-500">View and manage academic schedules across departments.</p>
+          <p className="text-sm font-medium text-slate-500">
+            View and manage academic schedules
+            {timetableDept && timetableSemester
+              ? ` — ${timetableDept} Semester ${timetableSemester}`
+              : ' across departments.'}
+          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -267,26 +408,48 @@ export default function TimetablePage() {
             </button>
           )}
 
-          {/* Add Slot — Admin only */}
+          {/* Manual class creation — Admin only */}
           {isAdmin && timetable && (
             <button
-              onClick={() => setSelectedSlot({
-                isNew: true,
-                day: 'MON',
-                period: 0,
-                subjectId: '',
-                facultyId: '',
-                roomId: '',
-                batch: viewAs === 'batch' ? selectedId : '',
-                section: 'A'
-              })}
+              onClick={openManualAddClass}
               className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
+              title="Create a new class block with subject, teacher, room, day and period"
             >
-              <Plus size={16} /> Add Class Slot
+              <PenLine size={16} /> Add Class Manually
             </button>
           )}
         </div>
       </div>
+
+      {/* Department / Semester loader */}
+      {slots.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Load timetable:</span>
+          <select
+            value={timetableDept}
+            onChange={(e) => handleLoadTimetable(e.target.value, timetableSemester)}
+            className="bg-white border border-slate-200 text-sm font-semibold text-slate-800 rounded-lg px-3 py-1.5"
+          >
+            <option value="">Department</option>
+            {DEPT_OPTIONS.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          <select
+            value={timetableSemester}
+            onChange={(e) => handleLoadTimetable(timetableDept, e.target.value)}
+            className="bg-white border border-slate-200 text-sm font-semibold text-slate-800 rounded-lg px-3 py-1.5"
+          >
+            <option value="">Semester</option>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+              <option key={s} value={s}>Semester {s}</option>
+            ))}
+          </select>
+          <span className="text-xs text-slate-400">
+            {slots.length} total slots in loaded timetable
+          </span>
+        </div>
+      )}
 
       {/* Filters */}
       <FilterBar 
@@ -309,15 +472,44 @@ export default function TimetablePage() {
           <div className="flex flex-col gap-4">
             {isAdmin && timetable && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900 flex flex-wrap items-center gap-2">
-                <span className="font-bold">Manual edit mode:</span>
-                Click any class to edit, drag slots to move, or use <strong>Add Class Slot</strong>.
+                <span className="font-bold">Manual control:</span>
+                Click a class to edit, drag to move, or use <strong>Add Class Manually</strong> to create new blocks.
                 Conflicts can be overridden with Force Move.
+              </div>
+            )}
+            {creditCompliance.length > 0 && (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-sm text-orange-900">
+                <div className="flex items-center gap-2 font-bold mb-2">
+                  <AlertTriangle size={16} />
+                  Credit / weekly hours mismatch (1 credit = 1 class per week)
+                </div>
+                <ul className="text-xs space-y-1 list-disc pl-5">
+                  {creditCompliance.slice(0, 8).map((item, i) => (
+                    <li key={i}>
+                      <strong>{item.code}</strong> ({item.batch.replace(/^batch_/, '')}): scheduled {item.scheduled} / required {item.required} periods
+                    </li>
+                  ))}
+                  {creditCompliance.length > 8 && (
+                    <li>…and {creditCompliance.length - 8} more</li>
+                  )}
+                </ul>
+                <p className="text-xs mt-2 text-orange-700">Regenerate the timetable or add classes manually to match credits.</p>
               </div>
             )}
             {!selectedId && (
               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl text-blue-600 dark:text-blue-400 text-sm font-medium flex items-center gap-2">
                 <CalendarIcon size={18} />
                 Please select a {viewAs} to view the schedule.
+              </div>
+            )}
+            {selectedId && filteredSlots.length === 0 && (
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-amber-800 text-sm font-medium">
+                No classes found for this {viewAs}. Try another filter or regenerate the timetable.
+              </div>
+            )}
+            {selectedId && filteredSlots.length > 0 && (
+              <div className="text-sm text-slate-500 font-medium px-1">
+                Showing <strong className="text-blue-700">{filteredSlots.length}</strong> scheduled class{filteredSlots.length !== 1 ? 'es' : ''}
               </div>
             )}
             <TimetableCalendar 
@@ -370,7 +562,11 @@ export default function TimetablePage() {
       <GenerateAITimetableModal
         isOpen={showAIModal}
         onClose={() => setShowAIModal(false)}
-        onSuccess={fetchTimetable}
+        onSuccess={(dept, semester) => {
+          if (dept) sessionStorage.setItem('iasds_timetable_dept', dept);
+          if (semester) sessionStorage.setItem('iasds_timetable_semester', String(semester));
+          fetchTimetable(dept, String(semester));
+        }}
       />
 
     </div>

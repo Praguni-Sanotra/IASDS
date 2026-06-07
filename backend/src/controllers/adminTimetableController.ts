@@ -7,6 +7,7 @@ import Faculty from '../models/Faculty';
 import AuditLog from '../models/AuditLog';
 import { AuthRequest } from '../middleware/auth';
 import logger from '../utils/logger';
+import { ensureTimetableSlotIds, findSlotIndex } from '../utils/timetableSlots';
 
 const SCHEDULER_URL = process.env.SCHEDULER_URL || 'http://localhost:8000';
 
@@ -211,12 +212,18 @@ export const updateTimetableSlot = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Timetable not found.' });
     }
 
-    const slotIndex = timetable.slots.findIndex((s: any) => s._id.toString() === slotId);
+    await ensureTimetableSlotIds(timetable);
+
+    const periodNum = parseInt(period);
+    const slotIndex = findSlotIndex(timetable, slotId, {
+      day,
+      period: periodNum,
+      batch,
+      section,
+    });
     if (slotIndex === -1) {
       return res.status(404).json({ message: 'Slot not found in this timetable.' });
     }
-
-    const periodNum = parseInt(period);
 
     if (!force) {
       const conflictCheck = await checkSlotConflicts(
@@ -388,7 +395,9 @@ export const deleteTimetableSlot = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Timetable not found.' });
     }
 
-    const slotIndex = timetable.slots.findIndex((s: any) => s._id.toString() === slotId);
+    await ensureTimetableSlotIds(timetable);
+
+    const slotIndex = findSlotIndex(timetable, slotId);
     if (slotIndex === -1) {
       return res.status(404).json({ message: 'Slot not found in this timetable.' });
     }
@@ -430,22 +439,23 @@ const checkSlotConflicts = async (
   const Faculty = require('../models/Faculty').default;
   
   const timetable = await Timetable.findById(timetableId);
-  const conflicts: string[] = [];
+  const hardConflicts: string[] = [];
+  const warnings: string[] = [];
   
-  if (!timetable) return { conflict: false, messages: [] };
+  if (!timetable) return { conflict: false, messages: [], warnings: [], hardConflicts: [] };
 
   for (const s of timetable.slots) {
     if (slotIdToExclude && s._id.toString() === slotIdToExclude) continue;
 
     if (s.day === day && s.period === period) {
       if (s.facultyId.toString() === facultyId) {
-        conflicts.push(`Faculty conflict: Faculty is already assigned to batch ${s.batch} (Section ${s.section}) in this period.`);
+        hardConflicts.push(`Faculty conflict: Faculty is already assigned to batch ${s.batch} (Section ${s.section}) in this period.`);
       }
       if (s.roomId.toString() === roomId) {
-        conflicts.push(`Room conflict: Room is already occupied by batch ${s.batch} (Section ${s.section}) in this period.`);
+        hardConflicts.push(`Room conflict: Room is already occupied by batch ${s.batch} (Section ${s.section}) in this period.`);
       }
       if (s.batch === batch && s.section === section) {
-        conflicts.push(`Batch conflict: Batch ${s.batch} Section ${s.section} already has a class in this period.`);
+        hardConflicts.push(`Batch conflict: Batch ${s.batch} Section ${s.section} already has a class in this period.`);
       }
     }
   }
@@ -456,13 +466,15 @@ const checkSlotConflicts = async (
     if (dayAvail && dayAvail.availableSlots && dayAvail.availableSlots.length > 0) {
       const normalizedPeriod = period + 1;
       if (!dayAvail.availableSlots.includes(normalizedPeriod)) {
-        conflicts.push(`Faculty Availability Warning: Faculty is not marked as available for ${day} Period ${normalizedPeriod}.`);
+        warnings.push(`Faculty availability: Not marked available for ${day} Period ${normalizedPeriod} (soft warning).`);
       }
     }
   }
 
   return {
-    conflict: conflicts.length > 0,
-    messages: conflicts
+    conflict: hardConflicts.length > 0,
+    messages: [...hardConflicts, ...warnings],
+    warnings,
+    hardConflicts,
   };
 };

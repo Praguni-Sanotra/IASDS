@@ -5,6 +5,8 @@ import redis from '../config/redis';
 import Timetable from '../models/Timetable';
 import { AuthRequest } from '../middleware/auth';
 import logger from '../utils/logger';
+import { ensureTimetableSlotIds } from '../utils/timetableSlots';
+import { enrichSlotsWithTeachers } from '../utils/teacherLoader';
 
 const SCHEDULER_URL = process.env.SCHEDULER_URL || 'http://localhost:8000';
 
@@ -57,17 +59,39 @@ export const getStatus = async (req: Request, res: Response) => {
 
 export const getLatestTimetable = async (req: Request, res: Response) => {
   try {
-    const timetable = await Timetable.findOne({ status: 'PUBLISHED' })
+    const { department, semesterId } = req.query;
+
+    const filter: Record<string, unknown> = { status: 'PUBLISHED' };
+    if (department) {
+      filter.department = String(department).toUpperCase();
+    }
+    if (semesterId) {
+      filter.semesterId = String(semesterId);
+    }
+
+    let timetable = await Timetable.findOne(filter)
       .sort({ createdAt: -1 })
       .populate('slots.subjectId')
-      .populate('slots.facultyId')
       .populate('slots.roomId');
+
+    // Fall back to latest published if scoped query returns nothing
+    if (!timetable && (department || semesterId)) {
+      timetable = await Timetable.findOne({ status: 'PUBLISHED' })
+        .sort({ createdAt: -1 })
+        .populate('slots.subjectId')
+        .populate('slots.roomId');
+    }
 
     if (!timetable) {
       return res.status(404).json({ message: 'No published timetable found' });
     }
 
-    res.json(timetable);
+    await ensureTimetableSlotIds(timetable);
+
+    const response = timetable.toObject();
+    response.slots = await enrichSlotsWithTeachers(response.slots);
+
+    res.json(response);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching latest timetable' });
   }
@@ -90,8 +114,15 @@ export const publishTimetable = async (req: Request, res: Response) => {
   const { timetableId } = req.params;
 
   try {
-    // Unpublish previous ones
-    await Timetable.updateMany({ status: 'PUBLISHED' }, { status: 'ARCHIVED' });
+    const target = await Timetable.findById(timetableId);
+    if (!target) {
+      return res.status(404).json({ message: 'Timetable not found' });
+    }
+
+    const archiveFilter: Record<string, unknown> = { status: 'PUBLISHED' };
+    if (target.department) archiveFilter.department = target.department;
+    if (target.semesterId) archiveFilter.semesterId = target.semesterId;
+    await Timetable.updateMany(archiveFilter, { status: 'ARCHIVED' });
 
     const timetable = await Timetable.findByIdAndUpdate(
       timetableId,

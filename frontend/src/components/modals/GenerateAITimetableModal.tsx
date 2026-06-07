@@ -26,7 +26,7 @@ import apiClient from "../../lib/apiClient";
 interface GenerateAITimetableModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void; // called after successful generation → triggers timetable refresh
+  onSuccess: (department: string, semester: number) => void;
 }
 
 interface GenerationStats {
@@ -92,7 +92,7 @@ export default function GenerateAITimetableModal({
   const [diagnostics, setDiagnostics] = useState<string[]>([]);
   const [fixes, setFixes] = useState<string[]>([]);
   const [stats, setStats] = useState<GenerationStats | null>(null);
-  const [allowFallbacks, setAllowFallbacks] = useState(false);
+  const [allowFallbacks, setAllowFallbacks] = useState(true);
 
   // animated progress state
   const [currentStep, setCurrentStep] = useState(0);
@@ -218,7 +218,7 @@ export default function GenerateAITimetableModal({
 
   // ── Success: trigger refresh + close ────────────────────────────────────
   const handleDone = () => {
-    onSuccess();
+    onSuccess(department, parseInt(semester));
     onClose();
   };
 

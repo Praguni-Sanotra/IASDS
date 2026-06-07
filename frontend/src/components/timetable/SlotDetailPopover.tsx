@@ -71,6 +71,43 @@ export function SlotDetailPopover({ slot, timetableId, onClose, onSuccess, isAdm
 
   if (!slot) return null;
 
+  const resolveSlotId = (id: any): string => {
+    if (!id) return '';
+    if (typeof id === 'object' && id.toString) return id.toString();
+    return String(id);
+  };
+
+  const slotDbId = resolveSlotId(slot._id);
+
+  const resolveRef = (ref: any) => {
+    if (!ref) return null;
+    if (typeof ref === 'object' && ref._id) return ref;
+    return null;
+  };
+
+  const subjectRef = resolveRef(slot.subjectId);
+  const facultyRef = resolveRef(slot.facultyId);
+  const roomRef = resolveRef(slot.roomId);
+
+  const displaySubjectName = subjectRef?.name || slot.subjectName || '—';
+  const displaySubjectCode = subjectRef?.code || slot.subjectCode || '—';
+  const displayFacultyName = facultyRef?.name || slot.facultyName || '—';
+  const displayEmployeeId = facultyRef?.employeeId || slot.employeeId || '—';
+  const displayRoomNumber = roomRef?.roomNumber || slot.roomNumber || '—';
+  const displayRoomType = roomRef?.type || slot.roomType || '—';
+  const displayRoomCapacity = roomRef?.capacity ?? slot.roomCapacity ?? '—';
+  const displayBatch = slot.batch || slot.batchName || '—';
+
+  const eligibleFacultyForSubject = subjectId
+    ? facultyList.filter((fac) => {
+        const sub = subjects.find((s) => s._id === subjectId);
+        if (!sub?.eligibleFaculty?.length) return true;
+        return sub.eligibleFaculty.some(
+          (ef: any) => (typeof ef === 'string' ? ef : ef._id?.toString()) === fac._id
+        );
+      })
+    : facultyList;
+
   const handleSave = async (forceUpdate = false) => {
     setIsSaving(true);
     const toastId = toast.loading(forceUpdate ? 'Applying forced slot changes...' : (slot.isNew ? 'Creating slot...' : 'Saving slot changes...'));
@@ -88,7 +125,7 @@ export function SlotDetailPopover({ slot, timetableId, onClose, onSuccess, isAdm
         });
         toast.success(forceUpdate ? 'Slot created (forced override)' : 'Slot created successfully', { id: toastId });
       } else {
-        await apiClient.put(`/admin/timetable/${timetableId}/slots/${slot._id}`, {
+        await apiClient.put(`/admin/timetable/${timetableId}/slots/${slotDbId}`, {
           subjectId,
           facultyId,
           roomId,
@@ -136,7 +173,7 @@ export function SlotDetailPopover({ slot, timetableId, onClose, onSuccess, isAdm
     setIsDeleting(true);
     const toastId = toast.loading('Deleting slot...');
     try {
-      await apiClient.delete(`/admin/timetable/${timetableId}/slots/${slot._id}`);
+      await apiClient.delete(`/admin/timetable/${timetableId}/slots/${slotDbId}`);
       toast.success('Slot deleted successfully', { id: toastId });
       onSuccess();
       onClose();
@@ -172,10 +209,14 @@ export function SlotDetailPopover({ slot, timetableId, onClose, onSuccess, isAdm
         <div className="flex items-center justify-between p-5 border-b border-zinc-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/50">
           <div>
             <h3 className="font-black text-lg text-blue-900 dark:text-blue-400">
-              {slot.isNew ? 'Create New Slot' : isEditing ? 'Edit Class Assignment' : 'Class Details'}
+              {slot.isNew ? (slot.isManualAdd ? 'Add Class Manually' : 'Create New Slot') : isEditing ? 'Edit Class Assignment' : 'Class Details'}
             </h3>
             <p className="text-xs font-medium text-slate-500 mt-0.5">
-              {slot.isNew ? 'Manually allocate a new class assignment' : isEditing ? 'Modify timetable slot details manually' : 'View populated schedule values'}
+              {slot.isNew
+                ? 'Pick subject, teacher, room, day, period, and batch — then save to create a new timetable block.'
+                : isEditing
+                ? 'Modify timetable slot details manually'
+                : 'View populated schedule values'}
             </p>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-zinc-600 transition-colors">
@@ -200,7 +241,10 @@ export function SlotDetailPopover({ slot, timetableId, onClose, onSuccess, isAdm
                   </label>
                   <select
                     value={subjectId}
-                    onChange={(e) => setSubjectId(e.target.value)}
+                    onChange={(e) => {
+                      setSubjectId(e.target.value);
+                      setFacultyId('');
+                    }}
                     className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                   >
                     <option value="">Select Subject</option>
@@ -223,7 +267,7 @@ export function SlotDetailPopover({ slot, timetableId, onClose, onSuccess, isAdm
                     className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                   >
                     <option value="">Select Faculty</option>
-                    {facultyList.map((fac) => (
+                    {eligibleFacultyForSubject.map((fac) => (
                       <option key={fac._id} value={fac._id}>
                         {fac.name} (ID: {fac.employeeId})
                       </option>
@@ -326,8 +370,8 @@ export function SlotDetailPopover({ slot, timetableId, onClose, onSuccess, isAdm
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Subject</p>
-                  <p className="text-sm font-extrabold text-blue-950 dark:text-zinc-100">{slot.subjectName}</p>
-                  <p className="text-xs text-slate-500 font-mono mt-0.5">{slot.subjectCode}</p>
+                  <p className="text-sm font-extrabold text-blue-950 dark:text-zinc-100">{displaySubjectName}</p>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">{displaySubjectCode}</p>
                 </div>
               </div>
 
@@ -337,8 +381,8 @@ export function SlotDetailPopover({ slot, timetableId, onClose, onSuccess, isAdm
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Faculty Instructor</p>
-                  <p className="text-sm font-extrabold text-slate-800 dark:text-zinc-100">{slot.facultyName}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Employee ID: {slot.employeeId}</p>
+                  <p className="text-sm font-extrabold text-slate-800 dark:text-zinc-100">{displayFacultyName}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Employee ID: {displayEmployeeId}</p>
                 </div>
               </div>
 
@@ -348,8 +392,8 @@ export function SlotDetailPopover({ slot, timetableId, onClose, onSuccess, isAdm
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Classroom Allocation</p>
-                  <p className="text-sm font-extrabold text-slate-800 dark:text-zinc-100">Room {slot.roomNumber}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{slot.roomType} (Capacity: {slot.roomCapacity} Seats)</p>
+                  <p className="text-sm font-extrabold text-slate-800 dark:text-zinc-100">Room {displayRoomNumber}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{displayRoomType} (Capacity: {displayRoomCapacity} Seats)</p>
                 </div>
               </div>
 
@@ -359,7 +403,7 @@ export function SlotDetailPopover({ slot, timetableId, onClose, onSuccess, isAdm
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Student Batch</p>
-                  <p className="text-sm font-extrabold text-slate-800 dark:text-zinc-100">{slot.batchName}</p>
+                  <p className="text-sm font-extrabold text-slate-800 dark:text-zinc-100">{displayBatch}</p>
                   <p className="text-xs text-slate-500 mt-0.5">Section: {slot.section}</p>
                 </div>
               </div>

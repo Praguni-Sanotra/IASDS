@@ -63,11 +63,12 @@ const seedDatabase = async () => {
         email: fac.email,
         department: 'CSE',
         availability: [
-          { day: DayOfWeek.MON, availableSlots: [1, 2, 3, 4, 5, 6, 7, 8] },
-          { day: DayOfWeek.TUE, availableSlots: [1, 2, 3, 4, 5, 6, 7, 8] },
-          { day: DayOfWeek.WED, availableSlots: [1, 2, 3, 4, 5, 6, 7, 8] },
-          { day: DayOfWeek.THU, availableSlots: [1, 2, 3, 4, 5, 6, 7, 8] },
-          { day: DayOfWeek.FRI, availableSlots: [1, 2, 3, 4, 5, 6, 7, 8] },
+          { day: DayOfWeek.MON, availableSlots: [1, 2, 3, 4, 5, 6] },
+          { day: DayOfWeek.TUE, availableSlots: [1, 2, 3, 4, 5, 6] },
+          { day: DayOfWeek.WED, availableSlots: [1, 2, 3, 4, 5, 6] },
+          { day: DayOfWeek.THU, availableSlots: [1, 2, 3, 4, 5, 6] },
+          { day: DayOfWeek.FRI, availableSlots: [1, 2, 3, 4, 5, 6] },
+          { day: DayOfWeek.SAT, availableSlots: [1, 2, 3, 4, 5, 6] },
         ],
         maxHoursPerWeek: 16,
       });
@@ -76,20 +77,36 @@ const seedDatabase = async () => {
 
     console.log('🌱 Seeding Subjects...');
     const subjects = [];
+    const facultyLoad: Record<string, number> = {};
     for (let i = 1; i <= 20; i++) {
       const isLab = i % 4 === 0;
+      const semester = (i % 8) + 1;
+      // Distribute subjects across faculty by lowest current load
+      const assignedFaculty = [...faculties].sort(
+        (a, b) => (facultyLoad[a._id.toString()] || 0) - (facultyLoad[b._id.toString()] || 0)
+      )[0];
+      const hours = isLab ? 2 : 3;
+      facultyLoad[assignedFaculty._id.toString()] = (facultyLoad[assignedFaculty._id.toString()] || 0) + hours;
+
       subjects.push({
         code: `CS${100 + i}`,
         name: isLab ? `Computer Science Lab ${i}` : `Computer Science Theory ${i}`,
         credits: isLab ? 2 : 3,
-        hoursPerWeek: isLab ? 2 : 3,
+        hoursPerWeek: hours,
         type: isLab ? SubjectType.LAB : SubjectType.THEORY,
         department: 'CSE',
-        semester: (i % 8) + 1,
-        eligibleFaculty: [faculties[i % faculties.length]._id],
+        semester,
+        eligibleFaculty: [assignedFaculty._id],
       });
     }
-    await Subject.insertMany(subjects);
+    const insertedSubjects = await Subject.insertMany(subjects);
+
+    // Sync subjectsTaught on faculty records
+    for (const sub of insertedSubjects) {
+      await Faculty.findByIdAndUpdate(sub.eligibleFaculty[0], {
+        $push: { subjectsTaught: { subjectId: sub._id, isPrimary: true } },
+      });
+    }
 
     console.log('🌱 Seeding Rooms...');
     const rooms = [];

@@ -5,9 +5,11 @@ import ical, { ICalEventRepeatingFreq } from 'ical-generator';
 import Timetable from '../models/Timetable';
 import AuditLog from '../models/AuditLog';
 import { AuthRequest } from '../middleware/auth';
+import { enrichSlotsWithTeachers } from '../utils/teacherLoader';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const PERIODS = 8;
+const DAY_KEYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const PERIODS = 6;
 const TYPE_COLORS: Record<string, string> = {
   THEORY: '#3b82f6',
   LAB: '#8b5cf6',
@@ -22,17 +24,19 @@ const fetchTimetableData = async (query: any) => {
   if (timetableId) {
     timetable = await Timetable.findById(timetableId)
       .populate('slots.subjectId')
-      .populate('slots.facultyId')
       .populate('slots.roomId');
   } else {
     timetable = await Timetable.findOne({ status: 'PUBLISHED' })
       .sort({ createdAt: -1 })
       .populate('slots.subjectId')
-      .populate('slots.facultyId')
       .populate('slots.roomId');
   }
 
   if (!timetable) return null;
+
+  const plain = timetable.toObject ? timetable.toObject() : timetable;
+  plain.slots = await enrichSlotsWithTeachers(plain.slots || timetable.slots);
+  timetable = plain;
 
   // Filter slots
   let filteredSlots = timetable.slots;
@@ -134,7 +138,7 @@ const exportToPDF = (res: Response, data: any) => {
     
     for (let d = 0; d < 6; d++) {
       const x = startX + 50 + (d * colWidth);
-      const slot = grid[d]?.[p];
+      const slot = grid[DAY_KEYS[d]]?.[p];
       
       doc.rect(x, y, colWidth, rowHeight).stroke();
       
@@ -170,7 +174,7 @@ const exportToExcel = async (res: Response, data: any) => {
   for (let p = 0; p < PERIODS; p++) {
     const rowData: any = { period: `P${p + 1}` };
     for (let d = 0; d < 6; d++) {
-      const slot = grid[d]?.[p];
+      const slot = grid[DAY_KEYS[d]]?.[p];
       if (slot) {
         rowData[DAYS[d]] = `${slot.subjectId?.code}\n${slot.roomId?.roomNumber}\n${slot.facultyId?.name}`;
       }
@@ -193,7 +197,7 @@ const exportToExcel = async (res: Response, data: any) => {
     workloadSheet.addRow({
       faculty: slot.facultyId?.name,
       subject: slot.subjectId?.code,
-      day: DAYS[slot.day],
+      day: DAY_KEYS.includes(slot.day) ? DAYS[DAY_KEYS.indexOf(slot.day)] : slot.day,
       period: `P${slot.period + 1}`,
       room: slot.roomId?.roomNumber
     });

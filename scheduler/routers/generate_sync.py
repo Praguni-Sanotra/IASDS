@@ -13,6 +13,11 @@ from pymongo import MongoClient
 from bson import ObjectId
 from config import MONGO_URI
 from services.csp_solver import solve
+from services.faculty_loader import (
+    load_faculty_for_department,
+    valid_faculty_id_set,
+    filter_eligible_to_real_faculty,
+)
 
 router = APIRouter()
 
@@ -66,7 +71,10 @@ def generate_timetable_sync(req: SyncGenerateRequest):
         # ----------------------------------------------------------------
         # 1. LOAD DATA
         # ----------------------------------------------------------------
-        raw_faculty = list(db["faculties"].find({"isActive": True}))
+        # Load college teachers (preferred) or legacy faculties seed data
+        dept_faculty_pool, faculty_source = load_faculty_for_department(db, req.department)
+        valid_teacher_ids = valid_faculty_id_set(dept_faculty_pool)
+
         raw_subjects = list(db["subjects"].find({
             "isActive": True,
             "department": req.department,
@@ -96,57 +104,82 @@ def generate_timetable_sync(req: SyncGenerateRequest):
         fatal_errors = False
         
         eligible_faculty_ids = set()
-        
-        # Validate Subjects & Assign Fallback Faculty if safe
-        for s in raw_subjects:
-            eligible = [str(fid) for fid in s.get('eligibleFaculty', [])]
+
+        if not dept_faculty_pool:
+            diagnostics.append(
+                f"No teachers found for department '{req.department}'. "
+                f"Check the teachers collection and department mapping."
+            )
+            fatal_errors = True
+
+        faculty_load_counter = {f['id']: 0 for f in dept_faculty_pool}
+
+        if faculty_source == 'teachers':
+            fixes_applied.append(
+                f"Using {len(dept_faculty_pool)} college teachers from the teachers collection "
+                f"(not seed faculties)."
+            )
+
+        # Validate subjects — drop stale seed faculty IDs, assign real teachers
+        for idx, s in enumerate(raw_subjects):
+            raw_eligible = [str(fid) for fid in s.get('eligibleFaculty', [])]
+            eligible = filter_eligible_to_real_faculty(raw_eligible, valid_teacher_ids)
             s_code = s.get('code', 'Unknown')
-            
+
+            if raw_eligible and not eligible and faculty_source == 'teachers':
+                fixes_applied.append(
+                    f"Subject {s_code} had seed/invalid faculty mapping — will assign a real teacher."
+                )
+
             if not eligible:
-                if req.allowFallbacks:
-                    # AUTO-FIX: assign department faculty if available
-                    dept_faculty = [
-                        str(f['_id']) for f in raw_faculty
-                        if str(f.get('department', '')).upper() == req.department.upper() and f.get('isActive', True)
-                    ]
-                    if dept_faculty:
-                        # Only assign top 3 fallback faculty to avoid symmetry explosions and timeouts in the solver
-                        eligible = dept_faculty[:3]
-                        fixes_applied.append(f"Subject {s_code} had no faculty. Auto-assigned {len(eligible)} fallback department faculty.")
-                        s['eligibleFaculty'] = [ObjectId(fid) for fid in eligible]
-                    else:
-                        diagnostics.append(f"Subject {s_code} has no assigned faculty and no department faculty are available.")
-                        fatal_errors = True
-                else:
-                    diagnostics.append(f"Subject {s_code} has no assigned faculty (Auto-fallback is disabled). Please manually assign faculty before generating.")
+                if req.allowFallbacks and dept_faculty_pool:
+                    chosen = min(
+                        dept_faculty_pool,
+                        key=lambda f: faculty_load_counter.get(f['id'], 0)
+                    )
+                    chosen_id = chosen['id']
+                    eligible = [chosen_id]
+                    faculty_load_counter[chosen_id] = (
+                        faculty_load_counter.get(chosen_id, 0) + s.get('hoursPerWeek', 3)
+                    )
+                    fixes_applied.append(
+                        f"Subject {s_code} auto-assigned to {chosen.get('name', chosen_id)}."
+                    )
+                    s['eligibleFaculty'] = [ObjectId(chosen_id)]
+                    db["subjects"].update_one(
+                        {'_id': s['_id']},
+                        {'$set': {'eligibleFaculty': [ObjectId(chosen_id)]}}
+                    )
+                elif not dept_faculty_pool:
+                    diagnostics.append(
+                        f"Subject {s_code} has no assigned teacher and no department teachers are available."
+                    )
                     fatal_errors = True
-            
+                else:
+                    diagnostics.append(
+                        f"Subject {s_code} has no assigned teacher (auto-fallback is disabled)."
+                    )
+                    fatal_errors = True
+            elif eligible != raw_eligible:
+                s['eligibleFaculty'] = [ObjectId(eid) for eid in eligible]
+                db["subjects"].update_one(
+                    {'_id': s['_id']},
+                    {'$set': {'eligibleFaculty': [ObjectId(eid) for eid in eligible]}}
+                )
+
             for fid in eligible:
                 eligible_faculty_ids.add(str(fid))
-                
-        # Build Faculty list
-        faculties = []
-        for f in raw_faculty:
-            f_id = str(f['_id'])
-            # Only include faculty relevant to the eligible set or if fallback needed
-            if f_id not in eligible_faculty_ids:
-                continue
-                
-            avail = []
-            for a in f.get('availability', []):
-                avail.append({
-                    'day': DAY_MAP.get(a['day'], 0),
-                    'slots': a.get('availableSlots', list(range(6)))
-                })
-            faculties.append({
-                'id': f_id,
-                'name': f['name'],
-                'maxHoursPerWeek': f.get('maxHoursPerWeek', 40),
-                'availability': avail
-            })
-            
+
+        # Solver faculty list — only teachers assigned to subjects this run
+        faculties = [f for f in dept_faculty_pool if f['id'] in eligible_faculty_ids]
+
+        if not faculties and dept_faculty_pool:
+            faculties = dept_faculty_pool
+
         if not faculties:
-            diagnostics.append(f"No active faculty members found to teach Semester {req.semester}.")
+            diagnostics.append(
+                f"No active teachers available to teach {req.department} Semester {req.semester}."
+            )
             fatal_errors = True
 
         # Validate Rooms
@@ -184,7 +217,8 @@ def generate_timetable_sync(req: SyncGenerateRequest):
         theory_hours = 0
         
         for s in raw_subjects:
-            hours = s.get('hoursPerWeek', 3)
+            # Credits = weekly class periods (1 credit → 1 period/week)
+            hours = int(s.get('hoursPerWeek') or s.get('credits') or 3)
             total_hours += hours
             s_type = s.get('type', 'THEORY').upper()
             
@@ -197,6 +231,7 @@ def generate_timetable_sync(req: SyncGenerateRequest):
                 'id': str(s['_id']),
                 'code': s.get('code', ''),
                 'hoursPerWeek': hours,
+                'credits': int(s.get('credits') or hours),
                 'type': s_type,
                 'eligibleFaculty': [str(fid) for fid in s.get('eligibleFaculty', [])],
                 'semester': s.get('semester', req.semester),
@@ -321,6 +356,7 @@ def generate_timetable_sync(req: SyncGenerateRequest):
         for assignment in solver_result['assignments']:
             start_t, end_t = get_period_times(assignment['period'])
             formatted_slots.append({
+                "_id": ObjectId(),
                 "day": DAY_REVERSE_MAP[assignment['day']],
                 "period": assignment['period'],
                 "startTime": start_t,

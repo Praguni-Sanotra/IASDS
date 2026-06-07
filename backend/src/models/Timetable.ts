@@ -22,6 +22,7 @@ export interface ITimetableSlot {
 
 export interface ITimetable extends Document {
   semesterId: string;
+  department?: string;
   academicYear: string;
   generatedAt: Date;
   generatedBy?: Types.ObjectId;
@@ -52,6 +53,7 @@ const SlotSchema: Schema = new Schema(
 const TimetableSchema: Schema = new Schema(
   {
     semesterId: { type: String, required: true },
+    department: { type: String },
     academicYear: { type: String, required: true },
     generatedAt: { type: Date, default: Date.now },
     generatedBy: { type: Schema.Types.ObjectId, ref: 'User' },

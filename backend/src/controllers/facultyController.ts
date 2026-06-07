@@ -9,6 +9,7 @@ import AuditLog from '../models/AuditLog';
 import { AuthRequest } from '../middleware/auth';
 import mongoose, { Types } from 'mongoose';
 import { sendExcelTemplate, sendCsvTemplate, sendExcelExport, extractIdsFromFile } from '../utils/bulkOperations';
+import { countTeachers, fetchTeachersAsFaculty } from '../utils/teacherLoader';
 
 // ==========================================
 // CRUD OPERATIONS
@@ -22,6 +23,14 @@ export const getAllFaculty = async (req: Request, res: Response): Promise<void> 
     const department = req.query.department as string;
     const sortBy = (req.query.sortBy as string) || 'name';
     const order = (req.query.order as string) === 'desc' ? -1 : 1;
+
+    // Prefer college teachers collection over legacy seed faculties
+    const teacherCount = await countTeachers();
+    if (teacherCount > 0) {
+      const result = await fetchTeachersAsFaculty({ department, search, page, limit });
+      res.json(result);
+      return;
+    }
 
     const query: any = { isActive: true };
 

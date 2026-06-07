@@ -154,6 +154,7 @@ def generate_schedule(self, semester_id: str, config: dict):
         for assignment in solver_result['assignments']:
             start_t, end_t = get_period_times(assignment['period'])
             formatted_slots.append({
+                "_id": ObjectId(),
                 "day": day_reverse_map[assignment['day']],
                 "period": assignment['period'],
                 "startTime": start_t,

@@ -12,90 +12,57 @@ interface TimetableCalendarProps {
   onEventDrop: (info: any) => void;
 }
 
-const PERIOD_START_HOUR = 8;
-const PERIOD_DURATION_MINS = 60; // 55 min class + 5 min break
+// FullCalendar daysOfWeek: 0=Sun, 1=Mon, ...
+const FC_DAY_MAP: Record<string, number> = {
+  SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6,
+};
+
+const PERIOD_TIMES: Record<number, { s: string; e: string }> = {
+  0: { s: '09:00:00', e: '10:00:00' },
+  1: { s: '10:00:00', e: '11:00:00' },
+  2: { s: '11:00:00', e: '12:00:00' },
+  3: { s: '12:00:00', e: '13:00:00' },
+  4: { s: '14:00:00', e: '15:00:00' },
+  5: { s: '15:00:00', e: '16:00:00' },
+};
 
 export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: TimetableCalendarProps) {
-  
-  // Helper to get date for a specific day of the current week (MON = 0, SAT = 5)
-  const getDateForDay = (day: string | number) => {
-    const dayMap: Record<string, number> = {
-      'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5, 'SUN': 6
-    };
-    
-    const dayIndex = typeof day === 'string' ? dayMap[day.toUpperCase()] : day;
-    
-    if (dayIndex === undefined) return new Date().toISOString().split('T')[0];
-
-    const today = new Date();
-    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday...
-    // Adjust to Monday as start of week (1)
-    const diff = today.getDate() - currentDay + (currentDay === 0 ? -6 : 1) + (dayIndex || 0);
-    const date = new Date(today);
-    date.setDate(diff);
-    
-    // Adjust for timezone offset to ensure local date isn't shifted by UTC
-    const offsetMs = date.getTimezoneOffset() * 60 * 1000;
-    const localDate = new Date(date.getTime() - offsetMs);
-    
-    return localDate.toISOString().split('T')[0];
-  };
-
-  // Transform internal slots to FullCalendar events
   const events = slots.map((slot, index) => {
-    const dayMap: Record<string, number> = {
-      'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5
-    };
-    
-    // Map to the current week's dates so they show up on the default calendar view
-    const date = getDateForDay(slot.day);
-
-    // Static Grid Mapping:
-    // Period 1 -> 09:00
-    // Period 2 -> 10:00
-    // Period 3 -> 11:00
-    // Period 4 -> 12:00
-    // Period 5 -> 14:00 (Skip 13:00 for Break)
-    // Period 6 -> 15:00
-    
-    // Period 1 -> 09:00:00
-    // Period 2 -> 10:00:00
-    // Period 3 -> 11:00:00
-    // Period 4 -> 12:00:00
-    // Period 5 -> 14:00:00 (Skip 13:00 for Break)
-    // Period 6 -> 15:00:00
-    
     const pNum = Number(slot.period);
-    // Python backend stores periods as 0-5. Map them to 1-6 for the times dict.
-    const normalizedPeriod = pNum < 6 ? pNum + 1 : pNum;
-    
-    const times: Record<number, {s: string, e: string}> = {
-      1: { s: "09:00:00", e: "10:00:00" },
-      2: { s: "10:00:00", e: "11:00:00" },
-      3: { s: "11:00:00", e: "12:00:00" },
-      4: { s: "12:00:00", e: "13:00:00" },
-      5: { s: "14:00:00", e: "15:00:00" },
-      6: { s: "15:00:00", e: "16:00:00" },
-    };
+    const periodKey = pNum >= 0 && pNum <= 5 ? pNum : 0;
+    const gridTimes = PERIOD_TIMES[periodKey];
 
-    const { s: startTime, e: endTime } = times[normalizedPeriod] || times[1];
+    // Align to grid hour slots (09:00–10:00, etc.) — DB times like 10:35 cause thin slivers
+    const startTime = gridTimes.s;
+    const endTime = gridTimes.e;
 
     const subjectCode = slot.subjectId?.code || slot.subjectCode || 'SUB';
-    const facultyName = slot.facultyId?.name || slot.facultyName || 'Faculty';
+    const facultyName =
+      slot.facultyName ||
+      slot.facultyId?.name ||
+      'No Faculty';
+    const subjectType = (slot.subjectId?.type || slot.type || (slot.isLab ? 'LAB' : 'THEORY')).toUpperCase();
+    const roomNumber = slot.roomId?.roomNumber || slot.roomNumber;
+    const dayOfWeek = FC_DAY_MAP[String(slot.day || 'MON').toUpperCase()] ?? 1;
 
-    const slotId = slot._id?.toString?.() || slot._id || `slot-${index}`;
+    const slotId = slot._id?.toString?.() || (slot._id ? String(slot._id) : '');
+    if (!slotId) {
+      console.warn('Timetable slot missing _id at index', index, slot);
+    }
 
     return {
       id: slotId,
       title: subjectCode,
-      start: `${date}T${startTime}`,
-      end: `${date}T${endTime}`,
-      allDay: false,
+      daysOfWeek: [dayOfWeek],
+      startTime,
+      endTime,
       extendedProps: {
         ...slot,
         _id: slotId,
         subjectCode,
         facultyName,
+        type: subjectType,
+        roomName: roomNumber,
         facultyInitials: facultyName.split(' ').map((n: string) => n[0]).join('') || '??',
       },
       editable: isAdmin,
@@ -109,13 +76,14 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
         initialView="timeGridWeek"
         headerToolbar={false}
         dayHeaderFormat={{ weekday: 'short' }}
+        firstDay={1}
         slotMinTime="09:00:00"
         slotMaxTime="17:00:00"
         slotDuration="01:00:00"
         snapDuration="01:00:00"
         allDaySlot={false}
-        weekends={false}
-        hiddenDays={[0]} // Hide Sunday
+        weekends={true}
+        hiddenDays={[0]}
         events={[
           ...events,
           {
@@ -124,8 +92,8 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
             startTime: '13:00:00',
             endTime: '14:00:00',
             display: 'background',
-            color: '#eff6ff' // Light blue break
-          }
+            color: '#eff6ff',
+          },
         ]}
         editable={isAdmin}
         eventClick={(info) => onSlotClick(info.event.extendedProps)}
@@ -137,7 +105,7 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
         eventOverlap={false}
         height="auto"
         nowIndicator={false}
-        expandRows={false}
+        expandRows={true}
         handleWindowResize={true}
         themeSystem="standard"
         slotLabelContent={(arg) => {
@@ -150,9 +118,9 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
             13: 'BREAK (1:35)',
             14: '5th Period (2:35)',
             15: '6th Period (3:35)',
-            16: 'Ending (4:35)'
+            16: 'Ending (4:35)',
           };
-          
+
           return (
             <div className="flex flex-col items-center py-1">
               <span className="text-[9px] font-black text-blue-600 uppercase leading-none mb-1">
@@ -180,13 +148,25 @@ export function TimetableCalendar({ slots, onSlotClick, isAdmin, onEventDrop }: 
           height: 6rem !important;
           border-bottom: 1px dashed #e2e8f0 !important;
         }
+        .fc-timegrid-event-harness {
+          margin: 2px 4px !important;
+          min-height: 5.25rem !important;
+        }
+        .fc-timegrid-event-harness-inset .fc-timegrid-event-harness {
+          min-height: 5.25rem !important;
+        }
         .fc-v-event {
           background-color: transparent !important;
           border: none !important;
           box-shadow: none !important;
+          min-height: 5rem !important;
         }
-        .fc-timegrid-event-harness {
-          padding: 4px !important;
+        .fc-v-event .fc-event-main {
+          height: 100% !important;
+          min-height: 5rem !important;
+        }
+        .fc-timegrid-event {
+          overflow: visible !important;
         }
         .fc-timegrid-slot-label-cushion {
           font-size: 11px;

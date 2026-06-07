@@ -33,7 +33,9 @@ export default function DashboardPage() {
   }, []);
 
   // After successful generation: navigate to timetable page
-  const handleGenerationSuccess = () => {
+  const handleGenerationSuccess = (department: string, semester: number) => {
+    if (department) sessionStorage.setItem('iasds_timetable_dept', department);
+    if (semester) sessionStorage.setItem('iasds_timetable_semester', String(semester));
     router.push('/dashboard/timetable');
   };
 

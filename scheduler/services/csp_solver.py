@@ -28,6 +28,25 @@ def solve(faculties, subjects, rooms, batches, constraints, timeout_seconds=60):
     DAYS = 6  # Mon(0) to Sat(5)
     PERIODS = 6  # 0 to 5 (matched to institute timings)
 
+    def normalize_room_type(room_type):
+        rt = str(room_type or 'LECTURE').upper().strip()
+        if rt in ('LECTURE', 'CLASSROOM', ''):
+            return 'THEORY'
+        return rt
+
+    def normalize_subject_type(subject_type):
+        st = str(subject_type or 'THEORY').upper().strip()
+        if st in ('SEMINAR', 'TUTORIAL'):
+            return 'THEORY'
+        return st
+
+    def room_matches_subject(room, subject_type):
+        rt = normalize_room_type(room.get('type'))
+        st = normalize_subject_type(subject_type)
+        if st == 'LAB':
+            return rt == 'LAB'
+        return rt == 'THEORY'
+
     def normalize_period_slots(slots):
         """DB often stores periods 1–6; solver uses 0–5."""
         if not slots:
@@ -89,7 +108,10 @@ def solve(faculties, subjects, rooms, batches, constraints, timeout_seconds=60):
             eligible_faculties = [f for f in faculties if f['id'] in s.get('eligibleFaculty', [])]
             
             # Filter valid rooms: matching type and sufficient capacity
-            valid_rooms = [r for r in rooms if r.get('type') == s.get('type') and r.get('capacity', 0) >= b.get('strength', 0)]
+            valid_rooms = [
+                r for r in rooms
+                if room_matches_subject(r, s.get('type')) and r.get('capacity', 0) >= b.get('strength', 0)
+            ]
             
             for f in eligible_faculties:
                 for d in range(DAYS):
@@ -190,20 +212,24 @@ def solve(faculties, subjects, rooms, batches, constraints, timeout_seconds=60):
     objective_terms = []
 
     # Soft Constraint: Avoid scheduling labs in the first or last period
-    # Penalty of -10 for each lab scheduled at period 0 or PERIODS-1
     for key, var in x.items():
         b_id, s_id, f_id, r_id, d, p = key
-        if subject_dict[s_id].get('type') == 'LAB':
+        if normalize_subject_type(subject_dict[s_id].get('type')) == 'LAB':
             if p == 0 or p == PERIODS - 1:
                 objective_terms.append(-10 * var)
 
-    # Soft Constraint: Prefer spreading subjects across days
-    # Penalize scheduling the same subject on the same day more than once
-    # (lighter version — just use the objective to reward diverse days, no extra BoolVars)
+    # Soft Constraint: Balance faculty workload — minimize the busiest teacher's load
+    max_load = model.NewIntVar(0, DAYS * PERIODS, 'max_faculty_load')
+    for f in faculties:
+        f_vars = by_faculty[f['id']]
+        if f_vars:
+            model.Add(max_load >= sum(f_vars))
 
-    # Set the objective: Maximize the rewards (minimize penalties)
+    # Set the objective: maximize soft rewards while minimizing peak faculty load
     if objective_terms:
-        model.Maximize(sum(objective_terms))
+        model.Maximize(sum(objective_terms) - (5 * max_load))
+    elif by_faculty:
+        model.Minimize(max_load)
 
     # ----------------------------------------------------------------------
     # SOLVE

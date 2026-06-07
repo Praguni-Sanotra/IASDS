@@ -6,30 +6,34 @@ interface EventCardProps {
   event: any;
 }
 
-const typeStyles: Record<string, { bg: string, text: string, border: string, iconColor: string }> = {
+const typeStyles: Record<string, { bg: string; title: string; body: string; border: string; iconColor: string }> = {
   THEORY: {
-    bg: 'bg-blue-50/80 dark:bg-blue-900/20',
-    text: 'text-blue-700 dark:text-blue-300',
-    border: 'border-blue-200/50 dark:border-blue-800/50',
-    iconColor: 'text-blue-500'
+    bg: 'bg-sky-50 border-sky-300',
+    title: 'text-slate-900',
+    body: 'text-slate-700',
+    border: 'border-sky-500',
+    iconColor: 'text-sky-600',
   },
   LAB: {
-    bg: 'bg-purple-50/80 dark:bg-purple-900/20',
-    text: 'text-purple-700 dark:text-purple-300',
-    border: 'border-purple-200/50 dark:border-purple-800/50',
-    iconColor: 'text-purple-500'
+    bg: 'bg-violet-50 border-violet-300',
+    title: 'text-slate-900',
+    body: 'text-slate-700',
+    border: 'border-violet-500',
+    iconColor: 'text-violet-600',
   },
   SEMINAR: {
-    bg: 'bg-emerald-50/80 dark:bg-emerald-900/20',
-    text: 'text-emerald-700 dark:text-emerald-300',
-    border: 'border-emerald-200/50 dark:border-emerald-800/50',
-    iconColor: 'text-emerald-500'
+    bg: 'bg-emerald-50 border-emerald-300',
+    title: 'text-slate-900',
+    body: 'text-slate-700',
+    border: 'border-emerald-500',
+    iconColor: 'text-emerald-600',
   },
   TUTORIAL: {
-    bg: 'bg-orange-50/80 dark:bg-orange-900/20',
-    text: 'text-orange-700 dark:text-orange-300',
-    border: 'border-orange-200/50 dark:border-orange-800/50',
-    iconColor: 'text-orange-500'
+    bg: 'bg-amber-50 border-amber-300',
+    title: 'text-slate-900',
+    body: 'text-slate-700',
+    border: 'border-amber-500',
+    iconColor: 'text-amber-600',
   },
 };
 
@@ -39,46 +43,66 @@ export function EventCard({ event }: EventCardProps) {
   const isConflict = extendedProps.isConflict;
   const style = typeStyles[type] || typeStyles.THEORY;
 
+  const subjectCode =
+    extendedProps.subjectCode ||
+    extendedProps.subjectId?.code ||
+    event.title ||
+    'SUB';
+
+  const facultyName =
+    extendedProps.facultyName ||
+    extendedProps.facultyId?.name ||
+    'No Faculty';
+
+  const roomLabel =
+    extendedProps.roomName ||
+    extendedProps.roomId?.roomNumber ||
+    extendedProps.roomNumber ||
+    'Room TBA';
+
+  const batchLabel = (extendedProps.batch || 'Gen').replace(/^batch_/i, '').replace(/_/g, ' ');
+
   return (
-    <div className={cn(
-      "group relative flex flex-col h-full w-full p-2 border-l-4 rounded-r-lg backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] hover:z-10 shadow-sm",
-      isConflict 
-        ? "bg-red-50/90 border-red-500 text-red-700 dark:bg-red-900/20 dark:text-red-300" 
-        : `${style.bg} ${style.border} ${style.text}`
-    )}>
-      {/* Subject Code & Title */}
-      <div className="flex items-start justify-between gap-1 mb-2">
-        <h4 className="font-black text-[11px] tracking-tight uppercase leading-none">
-          {extendedProps.subjectCode}
+    <div
+      className={cn(
+        'group relative flex flex-col h-full min-h-[5rem] w-full p-2.5 border-l-4 rounded-md shadow-sm overflow-hidden',
+        isConflict
+          ? 'bg-red-50 border-red-500 text-red-900'
+          : `${style.bg} ${style.border}`
+      )}
+    >
+      <div className="flex items-start justify-between gap-1 mb-1.5">
+        <h4 className={cn('font-black text-xs tracking-tight uppercase leading-tight', isConflict ? 'text-red-900' : style.title)}>
+          {subjectCode}
         </h4>
-        {isConflict && <AlertCircle size={12} className="text-red-500 animate-pulse" />}
+        {isConflict && <AlertCircle size={12} className="text-red-500 animate-pulse shrink-0" />}
       </div>
 
-      <div className="space-y-1.5 flex-1">
-        {/* Faculty */}
-        <div className="flex items-center gap-1.5 opacity-90">
-          <User size={10} className={style.iconColor} />
-          <span className="text-[10px] font-medium truncate">
-            {extendedProps.facultyName || 'No Faculty'}
+      <div className="space-y-1 flex-1">
+        <div className="flex items-center gap-1.5">
+          <User size={11} className={isConflict ? 'text-red-600' : style.iconColor} />
+          <span
+            className={cn('text-[10px] font-semibold truncate leading-tight', isConflict ? 'text-red-800' : style.body)}
+            title={facultyName}
+          >
+            {facultyName}
           </span>
         </div>
 
-        {/* Room */}
-        <div className="flex items-center gap-1.5 opacity-90">
-          <MapPin size={10} className={style.iconColor} />
-          <span className="text-[10px] font-medium truncate">
-            {extendedProps.roomName || extendedProps.roomId?.roomNumber || extendedProps.roomId?.name || 'Room TBA'}
+        <div className="flex items-center gap-1.5">
+          <MapPin size={11} className={isConflict ? 'text-red-600' : style.iconColor} />
+          <span className={cn('text-[10px] font-medium truncate', isConflict ? 'text-red-700' : style.body)}>
+            {roomLabel}
           </span>
         </div>
       </div>
 
-      {/* Batch / Section footer */}
-      <div className="mt-2 pt-1 border-t border-current/10 flex items-center justify-between text-[9px] font-bold uppercase tracking-widest opacity-60">
-        <div className="flex items-center gap-1">
+      <div className={cn('mt-1.5 pt-1 border-t flex items-center justify-between text-[9px] font-bold uppercase tracking-wide', isConflict ? 'border-red-200 text-red-700' : 'border-slate-300/60 text-slate-600')}>
+        <div className="flex items-center gap-1 truncate">
           <Users size={8} />
-          <span>{extendedProps.batch || 'Gen'}</span>
+          <span className="truncate">{batchLabel}</span>
         </div>
-        <span>{extendedProps.section}</span>
+        {extendedProps.section && <span>Sec {extendedProps.section}</span>}
       </div>
     </div>
   );
