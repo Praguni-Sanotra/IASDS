@@ -36,7 +36,7 @@ interface ChatSession {
 }
 
 export default function AssistantPage() {
-  // const { user, accessToken } = useAuthStore(); // AUTH DISABLED
+  const { user, accessToken } = useAuthStore();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -117,6 +117,7 @@ export default function AssistantPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ query: text, sessionId: activeSessionId }),
         signal: abortControllerRef.current.signal

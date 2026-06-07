@@ -9,14 +9,12 @@ import { FilterBar } from '../../../components/timetable/FilterBar';
 import { SlotDetailPopover } from '../../../components/timetable/SlotDetailPopover';
 import { GenerationPanel } from '../../../components/timetable/GenerationPanel';
 import GenerateAITimetableModal from '../../../components/modals/GenerateAITimetableModal';
-// import { useAuthStore } from '../../../store/authStore'; // AUTH DISABLED
+import { useAuthStore } from '../../../store/authStore';
 import apiClient from '../../../lib/apiClient';
 
 
 export default function TimetablePage() {
-  // const { user } = useAuthStore(); // AUTH DISABLED
-  // Mock user for display when auth is disabled
-  const user = { role: 'ADMIN' };
+  const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
 
   const [timetable, setTimetable] = useState<any>(null);

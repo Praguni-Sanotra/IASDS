@@ -9,10 +9,10 @@ import {
   DoorOpen, Sliders, BarChart3, Bot, FileClock,
   Menu, X, Sun, Moon, LogOut, UploadCloud
 } from 'lucide-react';
-// import { useAuthStore } from '../../store/authStore'; // AUTH DISABLED
-// import apiClient from '../../lib/apiClient'; // AUTH DISABLED
+import { useAuthStore } from '../../store/authStore';
+import apiClient from '../../lib/apiClient';
 import { cn } from '../../lib/utils';
-// import { toast } from 'sonner'; // AUTH DISABLED
+import { toast } from 'sonner';
 
 const getNavItems = (role: string) => {
   const common = [
@@ -47,7 +47,7 @@ const getNavItems = (role: string) => {
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // const { user, isAuthenticated, logout } = useAuthStore(); // AUTH DISABLED
+  const { user, isAuthenticated, logout } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
@@ -59,35 +59,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setMounted(true);
   }, []);
 
-  // useEffect(() => { // AUTH DISABLED
-  //   if (!isAuthenticated && mounted) {
-  //     router.replace('/login');
-  //   }
-  // }, [isAuthenticated, router, mounted]);
+  useEffect(() => {
+    if (!isAuthenticated && mounted) {
+      router.replace('/login');
+    }
+  }, [isAuthenticated, router, mounted]);
 
-  // if (!mounted || !isAuthenticated || !user) { // AUTH DISABLED
-  //   return null; // Avoid hydration mismatch and protected route flashes
-  // }
+  if (!mounted || !isAuthenticated || !user) {
+    return null; // Avoid hydration mismatch and protected route flashes
+  }
 
   if (!mounted) {
     return null;
   }
 
-  // Mock user for display when auth is disabled
-  const user = { name: 'Admin User', role: 'ADMIN' };
   const navItems = getNavItems(user.role);
 
   const handleLogout = async () => {
-    // try { // AUTH DISABLED
-    //   await apiClient.post('/auth/logout');
-    // } catch (e) {
-    //   // Ignore network errors on logout
-    // } finally {
-    //   logout();
-    //   toast.success('Logged out successfully');
-    //   router.replace('/login');
-    // }
-    console.log('Logout disabled - auth system is disabled');
+    try {
+      await apiClient.post('/auth/logout');
+    } catch (e) {
+      // Ignore network errors on logout
+    } finally {
+      logout();
+      toast.success('Logged out successfully');
+      router.replace('/login');
+    }
   };
 
   return (

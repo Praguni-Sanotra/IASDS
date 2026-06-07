@@ -2,13 +2,13 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import multer from 'multer';
 import * as roomController from '../controllers/roomController';
-// import { verifyToken, requireRole } from '../middleware/auth'; // AUTH DISABLED
+import { verifyToken, requireRole } from '../middleware/auth';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// router.use(verifyToken); // AUTH DISABLED
-// router.use(requireRole('ADMIN')); // AUTH DISABLED
+router.use(verifyToken);
+router.use(requireRole('ADMIN'));
 
 router.get('/template', roomController.downloadTemplate);
 router.get('/export', roomController.exportRooms);

@@ -14,7 +14,7 @@ import logger from './utils/logger';
 import redis from './config/redis';
 
 // Routes
-// import authRoutes from './routes/authRoutes'; // AUTH DISABLED
+import authRoutes from './routes/authRoutes';
 import facultyRoutes from './routes/facultyRoutes';
 import subjectRoutes from './routes/subjectRoutes';
 import roomRoutes from './routes/roomRoutes';
@@ -23,7 +23,7 @@ import scheduleRoutes from './routes/scheduleRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import exportRoutes from './routes/exportRoutes';
 import adminTimetableRoutes from './routes/adminTimetableRoutes';
-// import { verifyToken, requireRole } from './middleware/auth'; // AUTH DISABLED
+import { verifyToken, requireRole } from './middleware/auth';
 
 dotenv.config();
 
@@ -112,7 +112,7 @@ app.use(cookieParser());
 
 // --- ROUTES ---
 
-// app.use('/api/auth', authRoutes); // AUTH DISABLED
+app.use('/api/auth', authRoutes);
 app.use('/api/faculty', facultyRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/rooms', roomRoutes);
@@ -141,37 +141,37 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-// app.get('/api/health/detailed', verifyToken, requireRole('ADMIN'), (req, res) => { // AUTH DISABLED
-//   res.json({
-//     memory: process.memoryUsage(),
-//     cpu: process.cpuUsage(),
-//     connections: mongoose.connection.base.connections.length,
-//     env: process.env.NODE_ENV
-//   });
-// });
+app.get('/api/health/detailed', verifyToken, requireRole('ADMIN'), (req, res) => {
+  res.json({
+    memory: process.memoryUsage(),
+    cpu: process.cpuUsage(),
+    connections: mongoose.connection.base.connections.length,
+    env: process.env.NODE_ENV
+  });
+});
 
 // Admin Audit Log Endpoint
-// app.get('/api/admin/audit-logs', verifyToken, requireRole('ADMIN'), async (req, res) => { // AUTH DISABLED
-//   try {
-//     const { page = 1, limit = 50, action, entity, user } = req.query;
-//     const query: any = {};
-//     if (action) query.action = action;
-//     if (entity) query.entity = entity;
-//     if (user) query.performedBy = user;
+app.get('/api/admin/audit-logs', verifyToken, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const { page = 1, limit = 50, action, entity, user } = req.query;
+    const query: any = {};
+    if (action) query.action = action;
+    if (entity) query.entity = entity;
+    if (user) query.performedBy = user;
 
-//     const logs = await require('./models/AuditLog').default.find(query)
-//       .sort({ timestamp: -1 })
-//       .limit(Number(limit))
-//       .skip((Number(page) - 1) * Number(limit))
-//       .populate('performedBy', 'name email');
+    const logs = await require('./models/AuditLog').default.find(query)
+      .sort({ timestamp: -1 })
+      .limit(Number(limit))
+      .skip((Number(page) - 1) * Number(limit))
+      .populate('performedBy', 'name email');
 
-//     const total = await require('./models/AuditLog').default.countDocuments(query);
+    const total = await require('./models/AuditLog').default.countDocuments(query);
 
-//     res.json({ data: logs, total, pages: Math.ceil(total / Number(limit)) });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Error fetching audit logs' });
-//   }
-// });
+    res.json({ data: logs, total, pages: Math.ceil(total / Number(limit)) });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching audit logs' });
+  }
+});
 
 app.get('/', (req, res) => {
   res.json({ status: 'success', message: 'IASDS Hardened Backend is running!' });

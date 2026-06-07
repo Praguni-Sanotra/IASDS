@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import * as constraintController from '../controllers/constraintController';
-// import { verifyToken, requireRole } from '../middleware/auth'; // AUTH DISABLED
+import { verifyToken, requireRole } from '../middleware/auth';
 
 const router = Router();
 
-// router.use(verifyToken); // AUTH DISABLED
-// router.use(requireRole('ADMIN')); // AUTH DISABLED
+router.use(verifyToken);
+router.use(requireRole('ADMIN'));
 
 router.get('/', constraintController.getAllConstraints);
 router.post('/reset', constraintController.resetConstraints);

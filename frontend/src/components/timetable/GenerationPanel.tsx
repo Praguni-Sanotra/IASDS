@@ -12,7 +12,7 @@ import {
   History
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-// import { useAuthStore } from '../../store/authStore'; // AUTH DISABLED
+import { useAuthStore } from '../../store/authStore';
 import apiClient from '../../lib/apiClient';
 import { toast } from 'sonner';
 
@@ -21,7 +21,7 @@ interface GenerationPanelProps {
 }
 
 export function GenerationPanel({ onScheduleReady }: GenerationPanelProps) {
-  // const { accessToken } = useAuthStore(); // AUTH DISABLED
+  const { accessToken } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -41,7 +41,10 @@ export function GenerationPanel({ onScheduleReady }: GenerationPanelProps) {
   });
 
   useEffect(() => {
+    if (!accessToken) return;
+
     const socket = io(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5001', {
+      auth: { token: accessToken }
     });
 
     socket.on('connect', () => console.log('Connected to progress socket'));
@@ -73,7 +76,7 @@ export function GenerationPanel({ onScheduleReady }: GenerationPanelProps) {
     return () => {
       socket.disconnect();
     };
-  }, [jobId, onScheduleReady]);
+  }, [accessToken, jobId, onScheduleReady]);
 
   const handleGenerate = async () => {
     if (!context.department || !context.semester) {

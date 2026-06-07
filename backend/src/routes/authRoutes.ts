@@ -1,5 +1,3 @@
-// AUTH SYSTEM DISABLED - To restore, uncomment all code below
-/*
 import { Router } from 'express';
 import { body } from 'express-validator';
 import rateLimit from 'express-rate-limit';
@@ -37,9 +35,4 @@ router.post('/logout', verifyToken, authController.logout);
 router.post('/refresh', authController.refresh);
 router.get('/me', verifyToken, authController.me);
 
-export default router;
-*/
-
-import { Router } from 'express';
-const router = Router();
 export default router;
