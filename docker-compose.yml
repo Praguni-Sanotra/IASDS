@@ -49,8 +49,14 @@ services:
       - "5001:5001"
     env_file:
       - .env
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/hybridtimetable
+      - REDIS_URL=redis://redis:6379/0
+      - SCHEDULER_URL=http://scheduler:8000
     depends_on:
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
     networks:
       - iasds_network
@@ -69,8 +75,14 @@ services:
       - "8000"
     env_file:
       - .env
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/hybridtimetable
+      - REDIS_URL=redis://redis:6379/0
+      - NODE_BACKEND_URL=http://backend:5001/api
     depends_on:
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
     networks:
       - iasds_network
@@ -96,9 +108,25 @@ services:
       timeout: 10s
       retries: 3
 
+  mongodb:
+    image: mongo:7.0-alpine
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - iasds_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 networks:
   iasds_network:
     driver: bridge
 
 volumes:
   redis_data:
+  mongo_data:

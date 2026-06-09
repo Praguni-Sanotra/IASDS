@@ -8,25 +8,14 @@ const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 5000;
 
 export const connectDB = async () => {
-  let retries = 0;
-
-  while (retries < MAX_RETRIES) {
-    try {
-      await mongoose.connect(MONGO_URI);
-      console.log('✅ MongoDB connection successful.');
-      return;
-    } catch (error) {
-      retries++;
-      console.error(`❌ MongoDB connection failed. Retry ${retries}/${MAX_RETRIES}`);
-      console.error(error);
-      
-      if (retries >= MAX_RETRIES) {
-        console.error('🚨 Max retries reached. Exiting...');
-        process.exit(1);
-      }
-      
-      console.log(`⏳ Retrying in ${RETRY_DELAY_MS / 1000} seconds...`);
-      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-    }
+  try {
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    console.log('✅ MongoDB connection successful.');
+  } catch (error) {
+    console.error('❌ MongoDB initial connection failed.');
+    console.error(error);
+    console.warn('⚠️ Mongoose will continue to attempt reconnection in the background.');
   }
 };
