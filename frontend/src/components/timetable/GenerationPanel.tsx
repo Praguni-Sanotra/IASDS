@@ -43,7 +43,14 @@ export function GenerationPanel({ onScheduleReady }: GenerationPanelProps) {
   useEffect(() => {
     if (!accessToken) return;
 
-    const socket = io(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5001', {
+    let socketUrl = 'http://localhost:5001';
+    if (typeof window !== 'undefined' && (window.location.hostname.includes('onrender.com') || window.location.hostname.includes('frontend-new-7qyz'))) {
+      socketUrl = 'https://backend-czdt.onrender.com';
+    } else if (process.env.NEXT_PUBLIC_API_URL) {
+      socketUrl = process.env.NEXT_PUBLIC_API_URL.replace('/api', '');
+    }
+
+    const socket = io(socketUrl, {
       auth: { token: accessToken }
     });
 

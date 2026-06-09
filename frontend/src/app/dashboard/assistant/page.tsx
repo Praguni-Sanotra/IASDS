@@ -113,7 +113,14 @@ export default function AssistantPage() {
     abortControllerRef.current = new AbortController();
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/schedule/ai-query`, {
+      let apiUrl = 'http://localhost:5001/api';
+      if (typeof window !== 'undefined' && (window.location.hostname.includes('onrender.com') || window.location.hostname.includes('frontend-new-7qyz'))) {
+        apiUrl = 'https://backend-czdt.onrender.com/api';
+      } else if (process.env.NEXT_PUBLIC_API_URL) {
+        apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      }
+
+      const response = await fetch(`${apiUrl}/schedule/ai-query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

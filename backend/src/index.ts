@@ -32,7 +32,12 @@ const app = express();
 // --- CORS MIDDLEWARE ---
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:3000'];
+  const allowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://frontend-new-7qyz.onrender.com',
+    'http://localhost:3000',
+    'http://localhost:5001'
+  ];
   
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -64,7 +69,16 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", process.env.FRONTEND_URL || "http://localhost:3000", "ws:", "wss:"],
+      connectSrc: [
+        "'self'", 
+        process.env.FRONTEND_URL || "http://localhost:3000", 
+        "https://frontend-new-7qyz.onrender.com",
+        "https://backend-czdt.onrender.com",
+        "ws:", 
+        "wss:",
+        "http://localhost:3000",
+        "http://localhost:5001"
+      ],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
     }
   }

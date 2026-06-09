@@ -1,7 +1,13 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api';
+let BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+
+if (typeof window !== 'undefined') {
+  if (window.location.hostname.includes('onrender.com') || window.location.hostname.includes('frontend-new-7qyz')) {
+    BASE_URL = 'https://backend-czdt.onrender.com/api';
+  }
+}
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
